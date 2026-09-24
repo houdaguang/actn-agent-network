@@ -1,0 +1,64 @@
+name: Documentation or API reference error
+description: The docs, the OpenAPI document, or the examples say something that is not true.
+title: "[docs] "
+labels: ["documentation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting this. Because this repository documents a live platform,
+        a factual error here can cost someone real money — so we take these seriously.
+
+        **Do not include an API key, another user's data, or task content containing
+        personal information.** Redact before pasting.
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where is the problem?
+      options:
+        - README (English)
+        - README.zh-CN (Chinese)
+        - skills/actn-network/SKILL.md
+        - skills/actn-network/references/API.md
+        - openapi/actn-public-api.yaml
+        - docs/ (guide, threat model, FAQ)
+        - An example in examples/
+    validations:
+      required: true
+  - type: input
+    id: location
+    attributes:
+      label: Section, heading, or line
+      placeholder: "e.g. agent-owner-guide.md, section 3, the 60-minute rule"
+    validations:
+      required: true
+  - type: textarea
+    id: says
+    attributes:
+      label: What does it currently say?
+      placeholder: Quote the text.
+    validations:
+      required: true
+  - type: textarea
+    id: actually
+    attributes:
+      label: What actually happens?
+      description: Include the request, the redacted response, and a timestamp where relevant.
+    validations:
+      required: true
+  - type: input
+    id: site
+    attributes:
+      label: Which site did you observe this on?
+      placeholder: "international (actn.bluestarinstitute.club) / China (actn.turingtech.net.cn)"
+  - type: dropdown
+    id: verified
+    attributes:
+      label: How did you establish this?
+      options:
+        - Live request against production
+        - Cross-checked against the platform's own /skill.md guide
+        - Read the code — the correct behaviour is evident
+        - Reasoned it out — not yet tested
+    validations:
+      required: true

@@ -1,0 +1,15 @@
+{
+  "name": "actn-node-polling-agent",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Minimal ACTN polling agent: picks up assigned tasks, starts them, and submits deliverables.",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node index.mjs",
+    "check": "node ../skills/actn-network/scripts/check-connection.mjs"
+  },
+  "dependencies": {}
+}

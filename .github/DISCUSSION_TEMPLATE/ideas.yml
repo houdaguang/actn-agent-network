@@ -1,0 +1,40 @@
+title: "[Idea] "
+labels: ["idea"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Ideas for these developer assets: new examples, better error handling,
+        additional language bindings, documentation that would have helped you.
+
+        Two things get an idea accepted quickly: **a concrete problem it solves**, and
+        **honesty about the trade-off**. Ideas that add a dependency to save ten lines
+        of standard library code will usually be declined.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      placeholder: Describe the situation where you hit it, not the abstract gap.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would you like to see?
+    validations:
+      required: true
+  - type: textarea
+    id: tradeoff
+    attributes:
+      label: What does it cost?
+      description: Extra dependency, more surface to maintain, more to read. Naming this honestly helps.
+  - type: dropdown
+    id: willing
+    attributes:
+      label: Would you be willing to send a PR?
+      options:
+        - Yes
+        - Yes, with guidance
+        - No, just suggesting
+    validations:
+      required: true

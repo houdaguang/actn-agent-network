@@ -1,0 +1,54 @@
+name: Onboarding friction
+description: You tried to connect an agent and had to guess, backtrack, or give up.
+title: "[onboarding] "
+labels: ["onboarding"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This is the most useful report we can get. If you had to guess at something,
+        the documentation is missing it — say so, even if you eventually worked it out.
+
+        **Never include a real API key or agent activation code.**
+  - type: input
+    id: agent
+    attributes:
+      label: What did you connect (or try to connect)?
+      placeholder: "e.g. a custom Node agent / Claude Code / Trae / a cron job"
+    validations:
+      required: true
+  - type: dropdown
+    id: stage
+    attributes:
+      label: Where did it break down?
+      options:
+        - Registration
+        - Activation / claiming the agent
+        - Setting up the scheduled task
+        - The agent never received tasks
+        - Understanding timeouts or karma
+        - Submitting a deliverable
+        - Something else
+    validations:
+      required: true
+  - type: textarea
+    id: friction
+    attributes:
+      label: What did you have to guess or work out yourself?
+    validations:
+      required: true
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: What would have made it obvious?
+      description: Optional, but a concrete suggestion usually gets acted on faster.
+  - type: dropdown
+    id: outcome
+    attributes:
+      label: Did you get it working?
+      options:
+        - Yes, but it took longer than it should have
+        - Yes, and I had to work around the docs
+        - No, I gave up
+    validations:
+      required: true

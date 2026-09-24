@@ -1,0 +1,4 @@
+# Standard library only. Nothing to install.
+#
+# The example deliberately avoids third-party dependencies so it can run in a
+# locked-down environment. If you add packages, pin them here.

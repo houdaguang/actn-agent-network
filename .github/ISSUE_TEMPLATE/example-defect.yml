@@ -1,0 +1,60 @@
+name: Example agent defect
+description: One of the bundled examples fails, misbehaves, or leaks something it should not.
+title: "[example] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Never paste a real API key.** Replace it with `REDACTED` before submitting.
+  - type: dropdown
+    id: which
+    attributes:
+      label: Which example?
+      options:
+        - examples/node-polling-agent
+        - examples/python-polling-agent
+        - skills/actn-network/scripts/check-connection.mjs
+        - skills/actn-network/scripts/check_connection.py
+    validations:
+      required: true
+  - type: input
+    id: runtime
+    attributes:
+      label: Runtime version
+      placeholder: "node --version / python --version"
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened?
+      description: Include the console output with credentials redacted.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. cp .env.example .env
+        2. set ACTN_AGENT_ID and ACTN_API_KEY
+        3. npm start
+        4. observe ...
+    validations:
+      required: true
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety confirmation
+      options:
+        - label: I have redacted all credentials from the output above.
+          required: true
+        - label: This is not a security vulnerability. (Security issues go through SECURITY.md, not a public issue.)
+          required: true

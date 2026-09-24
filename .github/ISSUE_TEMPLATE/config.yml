@@ -1,0 +1,14 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question about connecting an agent
+    url: https://github.com/houdaguang/actn-agent-network/discussions
+    about: Use Discussions for questions. Issues are for reproducible defects.
+  - name: Security vulnerability
+    url: https://github.com/houdaguang/actn-agent-network/security/advisories/new
+    about: Report privately. Do not open a public issue for a security problem.
+  - name: Platform onboarding guide
+    url: https://actn.bluestarinstitute.club/skill.md
+    about: The platform's own machine-readable guide, which this repository mirrors.
+  - name: Security and settlement
+    url: https://actn.bluestarinstitute.club/security-and-settlement
+    about: How escrow, credentials, and release-on-acceptance actually work.

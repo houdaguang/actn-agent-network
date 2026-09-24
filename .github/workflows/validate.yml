@@ -1,0 +1,169 @@
+name: validate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  secret-scan:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fail if a credential is present anywhere in the tree
+        run: |
+          set -euo pipefail
+          # Patterns that must never appear in this repository.
+          PATTERNS='github_pat_[A-Za-z0-9_]{20,}'
+          PATTERNS="$PATTERNS"'|gh[pousr]_[A-Za-z0-9]{30,}'
+          PATTERNS="$PATTERNS"'|sk-[A-Za-z0-9]{20,}'
+          PATTERNS="$PATTERNS"'|sk-ant-[A-Za-z0-9_-]{20,}'
+          PATTERNS="$PATTERNS"'|AKIA[0-9A-Z]{16}'
+          PATTERNS="$PATTERNS"'|AIza[0-9A-Za-z_-]{35}'
+          PATTERNS="$PATTERNS"'|xox[baprs]-[A-Za-z0-9-]{10,}'
+          PATTERNS="$PATTERNS"'|-----BEGIN (RSA |EC |OPENSSH |PGP )?PRIVATE KEY-----'
+          PATTERNS="$PATTERNS"'|sk_(live|test)_[A-Za-z0-9]{16,}'
+          PATTERNS="$PATTERNS"'|0x[a-fA-F0-9]{64}'
+
+          if grep -rInE "$PATTERNS" . --exclude-dir=.git --exclude-dir=node_modules; then
+            echo "::error::A credential-shaped string was found in the tree. Remove it and rotate the secret."
+            exit 1
+          fi
+          echo "No credential-shaped strings found."
+
+      - name: Fail if .env was committed
+        run: |
+          if git ls-files | grep -E '(^|/)\.env$'; then
+            echo "::error::A .env file is tracked. Only .env.example belongs in the repository."
+            exit 1
+          fi
+          echo "No .env file tracked."
+
+  skill-frontmatter:
+    name: Validate Agent Skill
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Check SKILL.md exists and frontmatter is well-formed
+        run: |
+          set -euo pipefail
+          SKILL=skills/actn-network/SKILL.md
+          test -f "$SKILL" || { echo "::error::$SKILL is missing."; exit 1; }
+
+          python3 - "$SKILL" <<'PY'
+          import re, sys, pathlib
+
+          path = pathlib.Path(sys.argv[1])
+          text = path.read_text(encoding="utf-8")
+
+          m = re.match(r"^---\n(.*?)\n---\n", text, re.S)
+          if not m:
+              print("::error::SKILL.md has no YAML frontmatter block.")
+              sys.exit(1)
+
+          fm = m.group(1)
+
+          def field(name):
+              mm = re.search(rf"^{name}:\s*(.+)$", fm, re.M)
+              return mm.group(1).strip().strip('"\'') if mm else None
+
+          name = field("name")
+          desc = field("description")
+          errors = []
+
+          if not name:
+              errors.append("frontmatter `name` is required")
+          else:
+              if not re.fullmatch(r"[a-z0-9]+(-[a-z0-9]+)*", name):
+                  errors.append(f"`name` must be lowercase alphanumeric with single hyphens: {name!r}")
+              if len(name) > 64:
+                  errors.append("`name` exceeds 64 characters")
+              if name != path.parent.name:
+                  errors.append(f"`name` ({name!r}) must match the parent directory ({path.parent.name!r})")
+
+          if not desc:
+              errors.append("frontmatter `description` is required")
+          elif len(desc) > 1024:
+              errors.append(f"`description` exceeds 1024 characters ({len(desc)})")
+
+          body = text[m.end():]
+          body_lines = len([l for l in body.splitlines() if l.strip()])
+          if body_lines > 500:
+              print(f"::warning::SKILL.md body is {body_lines} lines; the spec recommends staying under 500.")
+
+          if errors:
+              for e in errors:
+                  print(f"::error::{e}")
+              sys.exit(1)
+
+          print(f"SKILL.md OK — name={name!r}, description={len(desc)} chars, body={body_lines} lines")
+          PY
+
+  openapi:
+    name: Lint OpenAPI
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Validate the OpenAPI document
+        run: npx --yes @redocly/cli@1 lint openapi/actn-public-api.yaml
+
+  examples-parse:
+    name: Examples parse
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Syntax-check the Node example
+        run: node --check examples/node-polling-agent/index.mjs
+
+      - name: Syntax-check the Node connection checker
+        run: node --check skills/actn-network/scripts/check-connection.mjs
+
+      - name: Syntax-check the Python example
+        run: python -m py_compile examples/python-polling-agent/agent.py
+
+      - name: Syntax-check the Python connection checker
+        run: python -m py_compile skills/actn-network/scripts/check_connection.py
+
+  no-hardcoded-credentials:
+    name: Examples take credentials from the environment
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Assert no example assigns a literal credential
+        run: |
+          set -euo pipefail
+          # The examples must read credentials from the environment, never inline them.
+          if grep -rInE "(ACTN_API_KEY|api_key|X-Agent-API-Key)\s*[:=]\s*['\"][A-Za-z0-9_-]{16,}['\"]" \
+               examples skills --include='*.mjs' --include='*.js' --include='*.py'; then
+            echo "::error::An example appears to hardcode a credential."
+            exit 1
+          fi
+          echo "Examples read credentials from the environment."

@@ -1,0 +1,51 @@
+title: "[ANN] "
+labels: ["announcement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Maintainer-only. Post here when a platform change affects integrators, when the
+        API reference is regenerated, or when a real product change ships.
+
+        Announcements must state **what changed, what it affects, and what the reader
+        should do** — and must carry a timestamp. No volume, payout, or performance
+        claims: their accounting basis is not published for external citation.
+  - type: input
+    id: date
+    attributes:
+      label: Date of the change (with timezone)
+      placeholder: "2026-09-25 Asia/Shanghai"
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of change?
+      options:
+        - API behaviour change
+        - Onboarding or lifecycle change
+        - Documentation regeneration
+        - Karma, tier, or timing rule change
+        - Security notice
+    validations:
+      required: true
+  - type: textarea
+    id: changed
+    attributes:
+      label: What changed
+    validations:
+      required: true
+  - type: textarea
+    id: affects
+    attributes:
+      label: Who is affected, and what should they do
+      placeholder: "Existing agents on interval X must ... / No action needed if you ..."
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: How a reader can verify this themselves
+      description: A URL, a request/response pair, or a reproducible step. Not just an assertion.
+    validations:
+      required: true

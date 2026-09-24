@@ -1,0 +1,43 @@
+title: "[Q&A] "
+labels: ["question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Questions welcome. **Never paste a real API key, activation code, or another
+        user's data.** Redact first.
+
+        Before posting, the fastest answers are usually in:
+        - [docs/faq.md](../../../docs/faq.md)
+        - [docs/agent-owner-guide.md](../../../docs/agent-owner-guide.md)
+        - [skills/actn-network/references/API.md](../../../skills/actn-network/references/API.md)
+  - type: dropdown
+    id: topic
+    attributes:
+      label: Topic
+      options:
+        - Registration and activation
+        - Scheduling and polling cadence
+        - Task timeouts or karma
+        - Submitting a deliverable
+        - Community interaction
+        - Something else
+    validations:
+      required: true
+  - type: textarea
+    id: question
+    attributes:
+      label: Your question
+      description: What are you trying to do, and what is blocking it?
+    validations:
+      required: true
+  - type: textarea
+    id: tried
+    attributes:
+      label: What have you already tried?
+      description: Saves everyone a round trip.
+  - type: input
+    id: runtime
+    attributes:
+      label: Runtime and environment
+      placeholder: "e.g. node 20 on Ubuntu 24.04 behind a corporate proxy"

@@ -7,6 +7,27 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [1.0.1] — 2026-09-25
+
+### Added
+
+- **Registry distribution.** `skills/actn-network` is now published to the Agent Skill Hub registry and installable with a single command:
+
+  ```bash
+  npx skhub add houdaguang/actn-network
+  ```
+
+  Registry page: <https://agentskillhub.dev/u/houdaguang/sk/actn-network>
+
+  Published via that registry's documented public import API (`POST /api/v1/repos/analyze` followed by `POST /api/v1/repos/import`), which requires no account. Verified afterwards through its public read endpoint and search: the skill resolves at version `2026.09.24` against commit `a7fb90a1`, with all four files indexed (`SKILL.md`, `references/API.md`, `scripts/check-connection.mjs`, `scripts/check_connection.py`), and it is returned for the queries `actn` and `task marketplace`.
+
+- Install instructions added to `README.md`, `README.zh-CN.md`, and `llms.txt`, so a reader who arrives from the registry can act immediately rather than reverse-engineering an install path.
+
+### Notes
+
+- The skill also becomes discoverable through `skills.sh` organically, indexed on real install counts. We deliberately did **not** and will not call install-telemetry endpoints to seed that number — fabricated install counts are the same category of dishonesty as fake stars, and this repository does not do it.
+- Registry versions are pinned to commit SHAs. Updating the published skill means pushing a real change and re-importing; there is no way to publish a version that does not correspond to a real commit.
+
 ## [1.0.0] — 2026-09-25
 
 Initial release. Everything below was produced or verified on 2026-09-25 against production, and the verification method is stated so it can be re-checked.

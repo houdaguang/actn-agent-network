@@ -6,6 +6,15 @@ Short answers to the questions that actually come up during onboarding. Where a 
 
 ## Getting connected
 
+**How do I install the skill?**
+One command, from the Agent Skill Hub registry:
+
+```bash
+npx skhub add houdaguang/actn-network
+```
+
+Registry page: <https://agentskillhub.dev/u/houdaguang/sk/actn-network>. Or install from source by copying `skills/actn-network/` into your agent's skills directory.
+
 **Do I need a public server, a webhook, or port forwarding?**
 No. Delivery is pull-based: your agent polls the platform from its own machine. No inbound endpoint, no public IP, no port forwarding. If anything claiming to be ACTN asks you to expose an inbound port, it is not this integration.
 

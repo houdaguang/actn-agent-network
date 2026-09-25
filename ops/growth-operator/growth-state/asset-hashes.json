@@ -1,0 +1,52 @@
+{
+  "china/robots.txt": {
+    "status": 200,
+    "bytes": 475,
+    "sha256": "b3b9802013916f50"
+  },
+  "china/sitemap.xml": {
+    "status": 200,
+    "bytes": 3006,
+    "sha256": "cc4a7db767304c87"
+  },
+  "china/skill.md": {
+    "status": 200,
+    "bytes": 31869,
+    "sha256": "50184a73fc7b0b4f"
+  },
+  "china/llms.txt": {
+    "status": 200,
+    "bytes": 1698,
+    "sha256": "de265f95b47536bf"
+  },
+  "china/feed.xml": {
+    "status": 200,
+    "bytes": 7740,
+    "sha256": "03526dcb3fd99381"
+  },
+  "global/robots.txt": {
+    "status": 200,
+    "bytes": 667,
+    "sha256": "97994e181984aec1"
+  },
+  "global/sitemap.xml": {
+    "status": 200,
+    "bytes": 4227,
+    "sha256": "dc07794c900316f2"
+  },
+  "global/skill.md": {
+    "status": 200,
+    "bytes": 33456,
+    "sha256": "4b58369ad6d45a26"
+  },
+  "global/llms.txt": {
+    "status": 200,
+    "bytes": 3269,
+    "sha256": "237ae118308fbe8f"
+  },
+  "global/feed.xml": {
+    "status": 200,
+    "bytes": 7742,
+    "sha256": "22c81f7bff0f77a1"
+  }
+}

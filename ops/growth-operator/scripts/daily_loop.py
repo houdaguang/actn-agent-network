@@ -306,6 +306,25 @@ def step_skill_e2e(state: dict) -> dict:
         return {"ran": True, "ok": False, "error": f"{type(e).__name__}: {e}", "at": now_iso()}
 
 
+# --------------------------------------------------------------------------- 4.6 公开资产监控
+def step_asset_watch() -> dict:
+    """公开资产变更 + 队列空置监控。
+
+    为什么放在每日循环里：skill.md 是外部 Agent 自助接入 ACTN 的入口，平台侧一改，
+    我们公开的指南与 API 契约就可能悄悄过期。这条监控是最高杠杆的一项——
+    它保护的是我们对外承诺的准确性，而不是我们自己发的帖子。
+    只读，绝不修改任何站点。
+    """
+    print("[4.6] 公开资产变更 + 队列空置监控")
+    try:
+        sys.path.insert(0, str(ROOT / "scripts"))
+        from asset_watch import watch  # noqa: PLC0415
+        return watch()
+    except Exception as e:  # noqa: BLE001
+        print(f"  监控异常: {type(e).__name__}: {e}")
+        return {"error": f"{type(e).__name__}: {e}"}
+
+
 # --------------------------------------------------------------------------- 5. 搜索提交
 def step_search_submission(new_urls: list[str]) -> dict:
     print("[5] 搜索提交")
@@ -332,6 +351,8 @@ def main() -> int:
     health = step_site_health()
     print()
     signals = step_signals()
+    print()
+    watch_summary = step_asset_watch()
     print()
 
     if paused:
@@ -368,6 +389,10 @@ def main() -> int:
         # 分发路径坏了是硬故障：注册表/更新链路失效会静默毁掉整个分发面
         risks.append({"skill_distribution_e2e_failed": e2e})
         status = "NEEDS_HUMAN_REVIEW" if status != "OK" else "NEEDS_HUMAN_REVIEW"
+    if (watch_summary or {}).get("changes"):
+        risks.append({"public_asset_changed": watch_summary["changes"]})
+    if int((watch_summary or {}).get("queue_idle_days") or 0) >= 3:
+        risks.append({"content_queue_idle_days": watch_summary["queue_idle_days"]})
 
     report = {
         "run_type": "daily_loop",
@@ -375,6 +400,7 @@ def main() -> int:
         "paused": paused,
         "site_health": health,
         "signals": signals,
+        "asset_watch": watch_summary,
         "publish": result,
         "skill_distribution_e2e": e2e,
         "search_submission": search,

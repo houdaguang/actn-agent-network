@@ -3,3 +3,8 @@
 .tmp-*/
 __pycache__/
 *.pyc
+
+# 运行日志必须提交：它是审计轨迹，且 Action 日志对本项目的 token 不可读。
+# 仓库根的 .gitignore 忽略了 *.log，这里按更深层规则反忽略回来。
+!growth-state/last-run.log
+!last-run.log

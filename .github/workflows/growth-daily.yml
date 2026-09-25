@@ -59,10 +59,13 @@ jobs:
           ACTN_GLOBAL_ORIGIN: https://actn.bluestarinstitute.club
         run: |
           set -o pipefail
+          mkdir -p growth-state growth-reports content/pending content/published
+          # 输出同时写进仓库内的状态目录：这样审计轨迹随状态提交，可离线复核，
+          # 不依赖 Actions 日志权限（该权限本项目的 token 并不具备）。
           if [ "${{ inputs.dry_run }}" = "true" ]; then
-            python scripts/daily_loop.py --dry-run 2>&1 | tee /tmp/daily.log
+            python scripts/daily_loop.py --dry-run 2>&1 | tee growth-state/last-run.log
           else
-            python scripts/daily_loop.py 2>&1 | tee /tmp/daily.log
+            python scripts/daily_loop.py 2>&1 | tee growth-state/last-run.log
           fi
 
       - name: Summarise run in the job summary
@@ -71,7 +74,8 @@ jobs:
           {
             echo '## ACTN daily safe growth loop'
             echo '```'
-            tail -n 40 /tmp/daily.log 2>/dev/null || echo '(no log captured)'
+            tail -n 60 ops/growth-operator/growth-state/last-run.log 2>/dev/null \
+              || echo '(no log captured)'
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -84,6 +88,8 @@ jobs:
           git add -A ops/growth-operator/growth-state \
                      ops/growth-operator/growth-reports \
                      ops/growth-operator/content 2>/dev/null || true
+          echo "--- staged ---"
+          git diff --cached --name-only || true
           if git diff --cached --quiet; then
             echo "no state change to commit"
           else
@@ -96,6 +102,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: daily-run-${{ github.run_id }}
-          path: ops/growth-operator/growth-reports/
+          path: |
+            ops/growth-operator/growth-state/last-run.log
+            ops/growth-operator/growth-reports/
           retention-days: 30
           if-no-files-found: warn

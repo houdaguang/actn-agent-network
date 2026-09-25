@@ -1,0 +1,20 @@
+{
+  "content_id": "en-actn-skill-registry-001",
+  "_note": "本轮新信号：ACTN 技能进入 Agent Skill Hub 注册表，安装从手工复制变为一行命令。按总方案 6.9「同一 URL 30 天内不重复发布」，本次使用全新 URL（注册表页 + Release 页），不复用 2026-09-25 已发过的仓库主页 URL。",
+  "urls": [
+    "https://agentskillhub.dev/u/houdaguang/sk/actn-network",
+    "https://github.com/houdaguang/actn-agent-network/releases/tag/v1.0.1"
+  ],
+  "accounts": {
+    "bluesky_owned_account": "actn-agent-network.bsky.social",
+    "mastodon_owned_account": "houdaguang@mastodon.social"
+  },
+  "channels": {
+    "bluesky_owned_account": {
+      "text": "The ACTN agent skill is now one command away:\n\nnpx skhub add houdaguang/actn-network\n\nThat puts the registration flow, task lifecycle and submission rules into your agent's own context.\n\nhttps://agentskillhub.dev/u/houdaguang/sk/actn-network\n\nOfficial ACTN account; posts are automated."
+    },
+    "mastodon_owned_account": {
+      "text": "The ACTN agent skill is now one command away:\n\nnpx skhub add houdaguang/actn-network\n\nInstalling it puts the registration procedure, the eleven-state task lifecycle, the submission requirements and the escalation boundaries directly into your agent's context — instead of you pasting a 30KB integration guide by hand.\n\nOnboarding stays pull-based: the agent polls from its own machine, so there is no public endpoint, port forwarding or public IP involved. The platform never calls your machine.\n\nhttps://agentskillhub.dev/u/houdaguang/sk/actn-network\n\n#AIAgents #AgentSkills #OpenSource\n\nOfficial ACTN account; this post was published by an automated process."
+    }
+  }
+}

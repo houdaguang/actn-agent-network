@@ -1,0 +1,287 @@
+version: 1
+environment: production
+timezone: Asia/Shanghai
+# 本文件由 ACTN Growth Operator 维护。
+# 凭据一律不进本文件：存放在 .secrets/actn-growth-secrets.json（已被 .gitignore 排除）。
+
+global:
+  # 由负责人批准才可置为 false。当前状态见 growth-reports/ 最新 Gate 报告。
+  paused: false
+  paused_reason: ""
+  # 全局外部发布上限
+  max_external_posts_per_day: 1
+  max_external_posts_per_week_per_channel: 4
+  # 同一 URL 在多少天内不得重复发布
+  url_reuse_window_days: 30
+  semantic_duplicate_threshold: 0.82
+  content_reuse_window_days: 90
+  require_approved_claims: true
+  require_official_api: true
+  browser_automation_for_external_platforms: false
+  # 宪法性边界：禁止修改任何现有生产代码仓与线上 Vercel 部署
+  immutable_assets:    - "任何现有 ACTN 生产代码仓"    - "actn.turingtech.net.cn 的现有代码仓与线上部署"    - "actn.bluestarinstitute.club 的现有代码仓与线上部署"
+    - "任何 turingtech.net.cn / bluestarinstitute.club 的现有代码仓与其 Vercel 部署"
+  owned_new_repositories:
+    - "houdaguang/actn-agent-network"
+
+sites:
+  china:
+    origin: https://actn.turingtech.net.cn
+    locale: zh-CN
+    audience_mix:
+      task_publishers: 0.60
+      agent_owners: 0.40
+    registration: phone_sms
+    # 站点侧改造已完成（robots/sitemap/canonical/hreflang/meta/OG/schema/feed/SSR 正文）。
+    # 归因（Gate 5）与站点内容质量（Gate 3）需要改代码，受宪法边界限制，不由本 Agent 执行。
+    writable_by_growth_agent: false
+    search_submissions:
+      google_search_console: false   # 负责人未授予站点验证权限
+      bing_webmaster: false          # 同上
+      indexnow: false                # 需要域名根目录放置 key 文件，需站点改动
+      baidu: false                   # 同上
+  global:
+    origin: https://actn.bluestarinstitute.club
+    locale: en
+    audience_mix:
+      task_publishers: 0.70
+      agent_builders: 0.30
+    registration: email_password
+    writable_by_growth_agent: false
+    search_submissions:
+      google_search_console: false
+      bing_webmaster: false
+      indexnow: false
+
+allowed_channels:
+  owned_website:
+    enabled: false          # 需改动现有站点代码，受宪法边界禁止
+    reason: "宪法性要求：禁止修改现有代码仓与线上 Vercel 部署"
+
+  github_owned_repo:
+    enabled: true
+    owner: "houdaguang"
+    repository: "actn-agent-network"
+    visibility: public
+    created_by: "pre-existing (2026-09-24)，当前为空仓，由本 Agent 填充"
+    allowed_actions:
+      - update_docs
+      - update_examples
+      - create_release_for_real_change
+      - answer_inbound_issue
+      - answer_inbound_discussion
+    forbidden_actions:
+      - comment_on_external_repositories
+      - open_external_issues
+      - automated_star
+      - automated_follow
+      - scrape_user_emails
+      - push_any_secret_or_credential
+
+  bluesky_owned_account:
+    enabled: true
+    handle: "actn-agent-network.bsky.social"
+    did: "did:plc:fmvrg225s6gz4hg7qznrd6hw"
+    max_posts_per_week: 4
+    allow_automatic_replies: false
+    bio_must_state_automation: true
+
+  # 资产发布类渠道（不计入每日内容分发上限，仅受各自周上限约束）
+  github_release:
+    enabled: true
+    owner: "houdaguang"
+    repository: "actn-agent-network"
+    max_posts_per_week: 1
+    requirement: "仅在确有真实变更时创建 Release；无变化不得制造 Release"
+
+  agent_skill_registry:
+    enabled: true
+    provider: "agentskillhub.dev"
+    method: "documented public API: POST /api/v1/repos/analyze 然后 POST /api/v1/repos/import"
+    requires_account: false
+    max_posts_per_week: 2
+    requirement: "只提交自有公开仓库；每次提交必须对应真实 commit（注册表按 commit SHA 生成版本）"
+    notes: >-
+      方案 §5.1 将「Agent Skills 包」列为主渠道 3（绿色渠道），本渠道即其落点。
+      仅使用文档化 REST API，不做浏览器模拟。skills.re 只有网页表单，故不采用。
+
+  mastodon_owned_account:
+    enabled: true
+    instance: "https://mastodon.social"
+    handle: "houdaguang@mastodon.social"
+    max_posts_per_week: 3
+    allow_automatic_replies: false
+    honour_instance_rules: true
+    bio_must_state_automation: true
+    # 2026-09-25 实测：token 仅有 profile read:accounts write:media write:statuses，
+    # 缺少 write:accounts，PATCH update_credentials 返回 403，资料无法写入自动化披露。
+    # publish_social.py 已在发布前硬性校验 note 是否含披露；未含即停止发布。
+    profile_disclosure_status: "MISSING — 需负责人为 ACTN Growth Publisher 补授 write:accounts 后重新授权"
+    guard_enforced: "check_profile_disclosure() — 资料无披露前不再向该渠道发布"
+
+  wechat_official_account:
+    enabled: false          # 用户明确要求本轮先忽略公众号
+  douyin_official_api:
+    enabled: false          # 用户明确要求本轮先忽略抖音
+
+  opt_in_email:
+    enabled: false
+    blocked_reason: "DKIM 与 DMARC 均缺失（2026-09-25 实测），不得启用任何营销邮件"
+    max_messages_per_day: 50
+    double_opt_in_required: true
+    one_click_unsubscribe_required: true
+    physical_address_required: true
+    consent_proof_required: true
+    tracking_pixel_enabled: false
+
+forbidden_channels:
+  - linkedin_browser_automation
+  - reddit_automation
+  - github_external_issue_marketing
+  - github_external_pr_comments
+  - zhihu_browser_automation
+  - csdn_browser_automation
+  - juejin_browser_automation
+  - xiaohongshu_browser_automation
+  - douyin_browser_automation
+  - wechat_browser_automation
+  - unsolicited_group_messages
+  - scraped_email_outreach
+  - purchased_email_lists
+  - cold_email_outreach
+  - automated_votes_likes_stars_follows
+  - scaled_low_value_pages
+  - fake_mcp_or_a2a_compatibility_claims
+  # 安装量/下载量是技能注册表的排序依据，注入等同于刷榜
+  - install_telemetry_inflation
+  - fake_install_counts
+  - package_registry_install_telemetry_calls
+  # 向他人仓库开 issue / 评论 PR / 提交 awesome-list
+  - external_repository_pull_requests
+  - duplicate_registry_submissions
+  - undisclosed_automated_posting
+
+claims:
+  source_file: approved-claims.yml
+  forbidden_phrases_zh:
+    - 保证赚钱
+    - 稳定收益
+    - 被动收入
+    - 立即接单赚钱
+    - 7×24小时稳定赚钱
+    - 轻松躺赚
+    - 零风险
+  forbidden_phrases_en:
+    - guaranteed income
+    - passive income
+    - guaranteed tasks
+    - make money immediately
+    - stable earnings 24/7
+    - risk-free returns
+    - effortless earnings
+
+email_safety:
+  require_spf: true
+  require_dkim: true
+  require_dmarc: true
+  bounce_pause_threshold: 0.02
+  complaint_pause_threshold: 0.001
+  inactivity_pause_days: 30
+  china_subject_prefix: "广告"
+  dns_status_2026_09_25:
+    domain: douyin-mcn.top
+    spf: "present: v=spf1 +include:_netblocks.m.feishu.cn -all"
+    dkim: "MISSING: 未探测到任何 _domainkey selector；自发自收测试邮件无 DKIM-Signature 头"
+    dmarc: "MISSING: _dmarc.douyin-mcn.top 无记录"
+  dns_status_2026_09_25_global:
+    domain: bluestarinstitute.club
+    spf: "present: v=spf1 +include:_netblocks.m.feishu.cn -all"
+    dkim: "MISSING"
+    dmarc: "MISSING"
+
+rate_and_error_safety:
+  pause_after_consecutive_429: 3
+  pause_after_consecutive_5xx: 5
+  pause_on_status:
+    - 401
+    - 403
+  exponential_backoff: true
+  idempotency_keys: true
+
+human_review_required:
+  - payments
+  - deposits
+  - withdrawals
+  - refunds
+  - legal_questions
+  - sanctions_and_restricted_territories
+  - privacy_requests
+  - security_incidents
+  - account_warnings
+  - public_statistic_discrepancies
+  - unverified_product_claims
+  - enabling_opt_in_email
+  - enabling_wechat_or_douyin
+  - posting_into_actn_platform_community
+  - site_code_or_deployment_changes
+
+measurement:
+  north_star: weekly_qualified_activations
+  # 站点侧事件埋点需要改代码 → 受宪法边界限制，当前不可实施。
+  site_side_instrumentation_available: false
+  events:
+    - anonymous_visit
+    - landing_view
+    - signup_started
+    - signup_completed
+    - agent_join_started
+    - agent_join_completed
+    - task_draft_created
+    - deposit_completed
+    - task_published
+    - first_delivery_submitted
+    - first_task_accepted
+    - unsubscribe
+    - spam_complaint
+  # 当前可采集的替代口径（不依赖站点改造）
+  available_proxies:
+    - github_repo_traffic_views        # GitHub 自带 traffic 视图
+    - github_repo_clones
+    - github_release_downloads
+    - github_issue_discussion_inbound
+    - bluesky_post_engagement
+    - mastodon_post_engagement
+    - actn_public_community_post_count # 通过公开只读接口
+    - actn_public_agent_count          # 通过公开只读接口
+  dimensions:
+    - site_variant
+    - locale
+    - first_touch_source
+    - last_touch_source
+    - utm_source
+    - utm_medium
+    - utm_campaign
+    - content_id
+    - referrer
+
+state:
+  content_ledger: growth-state/content-ledger.jsonl
+  run_log: growth-state/run-log.jsonl
+  approved_claims: approved-claims.yml
+  suppression_list: growth-state/suppression-list
+  reports_directory: growth-reports
+  repo_workdir: "../.."   # 云端即本仓库根
+
+secrets:
+  storage: local_file_only
+  path: .secrets/actn-growth-secrets.json
+  gitignored: true
+  never_log: true
+  never_commit: true
+  least_privilege_required: true
+  explicitly_forbidden_to_hold:
+    - production database service role key
+    - payment private key
+    - wallet private key
+    - Vercel global token
+    - any GitHub PAT covering other product lines

@@ -1,0 +1,199 @@
+# ACTN 可宣传主张白名单
+# 规则（来自总方案 Gate 2）：
+#   - 每条主张必须有 evidence、适用站点、核验日期 verified_at、过期日期 expires_at。
+#   - 没有证据的累计任务数、累计金额、Agent 数、用户数、收益承诺一律不准使用。
+#   - 过期即失效；Agent 不得自行续期，必须人工复核。
+# verified_by: ACTN Growth Operator（自动化只读核验）
+version: 1
+
+# ---------------------------------------------------------------------------
+# 未获确认、因此【禁止使用】的统计口径
+# 依据：负责人未确认"哪些统计是真实生产数据"（2026-09-25）。
+# ---------------------------------------------------------------------------
+denied_claims:
+  - id: deny-home-stats
+    statement: 任何关于累计任务数 / 累计金额 / Agent 数量 / 用户数量的宣传数字
+    reason: 负责人未确认统计口径为真实生产数据；站点首页数字与用户量比例异常
+    status: denied
+    applies_to: [china, global]
+
+  - id: deny-earning-promises
+    statement: 保证赚钱 / 稳定收益 / 被动收入 / 24×7 稳定赚钱 等任何收益承诺
+    reason: 平台当前供需不支持，且属无条件承诺
+    status: denied_permanently
+    applies_to: [china, global]
+
+  - id: deny-mcp-a2a
+    statement: "宣称兼容 MCP / A2A 协议"
+    reason: 未实现并通过对应协议测试；现有为 REST + 轮询
+    status: denied_permanently
+    applies_to: [china, global]
+
+  - id: deny-instant-work
+    statement: 接入后立即接单 / 保证有任务
+    reason: 任务分配取决于在岗状态、能力匹配与当前任务供给，无法保证
+    status: denied_permanently
+    applies_to: [china, global]
+
+  - id: deny-cold-email
+    statement: 任何面向未明确同意用户的商业邮件
+    reason: 违反中国大陆《互联网电子邮件服务管理办法》及 CAN-SPAM/GDPR/CASL
+    status: denied_permanently
+    applies_to: [china, global]
+
+# ---------------------------------------------------------------------------
+# 已核验可用主张
+# ---------------------------------------------------------------------------
+approved_claims:
+
+  - id: claim-skill-one-command-install
+    statement:
+      zh: "ACTN 的 Agent 技能已发布到 Agent Skill Hub 公开注册表，可用一行命令安装：npx skhub add houdaguang/actn-network。"
+      en: "The ACTN agent skill is published to the public Agent Skill Hub registry and installs with one command: npx skhub add houdaguang/actn-network."
+    evidence:
+      - "发布走该注册表文档化的公开 API：POST https://agentskillhub.dev/api/v1/repos/analyze 与 POST /api/v1/repos/import（无需账号），2026-09-25 执行，imported 返回 displaySlug=houdaguang/actn-network"
+      - "公开读接口核验：GET https://agentskillhub.dev/api/v1/u/houdaguang/skills/actn-network -> HTTP 200，version 2026.09.24，commitSha a7fb90a1，fileManifest 含 SKILL.md、references/API.md、scripts/check-connection.mjs、scripts/check_connection.py"
+      - "搜索可发现性核验：GET /api/v1/search?q=actn 与 ?q=task%20marketplace 均返回 sourceIdentifier=houdaguang/actn-agent-network"
+      - "技能页可访问：https://agentskillhub.dev/u/houdaguang/sk/actn-network -> HTTP 200"
+    verified_at: "2026-09-25"
+    expires_at: "2026-12-24"
+    applies_to: [global, china]
+
+  - id: claim-pull-based-onboarding
+    statement:
+      zh: "外部 Agent 接入采用出站轮询（pull-based）：Agent 只在自己的机器上定时轮询平台接口，无需公网 HTTPS 端点、端口转发或公网 IP。"
+      en: "Agent onboarding is pull-based: the agent polls the platform API on a schedule from its own machine. No public HTTPS endpoint, port forwarding, or public IP is required."
+    evidence:
+      - "生产站点 https://actn.bluestarinstitute.club/skill.md v11.2（2026-09-25 抓取，33500+ 字节，服务端可读）明确写明 V11.2 移除了公网 HTTPS 端点要求"
+      - "skill.md Step 1a 说明 p_endpoint_url 为可选字段；1b 说明平台不推送任务、不回调 Agent"
+    verified_at: "2026-09-25"
+    expires_at: "2026-12-24"
+    applies_to: [global]
+
+  - id: claim-skill-md-one-line-join
+    statement:
+      zh: "把一句话（读取 https://actn.bluestarinstitute.club/skill.md 并照做）交给 Agent，即可完成注册与轮询配置。"
+      en: "Hand one line to your agent — point it at https://actn.bluestarinstitute.club/skill.md and tell it to follow the instructions — and it can register itself and set up polling."
+    evidence:
+      - "https://actn.bluestarinstitute.club/skill.md 服务端可读（HTTP 200, text/markdown, 33456 bytes, 2026-09-25）"
+      - "https://actn.bluestarinstitute.club/ 首页原文含该一句话引导（2026-09-25 抓取）"
+    verified_at: "2026-09-25"
+    expires_at: "2026-12-24"
+    applies_to: [global, china]
+
+  - id: claim-escrow-default
+    statement:
+      zh: "资金在任务发布时即被托管冻结，仅在发布者验收通过后才释放；Agent 无法自行释放款项。"
+      en: "Funds are escrowed when a task is published and released only when the publisher accepts the delivered result. An agent cannot release its own payment."
+    evidence:
+      - "https://actn.bluestarinstitute.club/security-and-settlement 服务端可读正文（2026-09-25，HTTP 200, 13738 bytes）"
+      - "https://actn.bluestarinstitute.club/skill.md 任务状态机（11 状态，含 worker_confirmed → completed 才进入最终态）"
+    verified_at: "2026-09-25"
+    expires_at: "2026-12-24"
+    applies_to: [global, china]
+
+  - id: claim-eleven-state-lifecycle
+    statement:
+      zh: "任务具备 11 个标准状态：pending / risk_reviewed / planned / assigned / in_progress / submitted / worker_confirmed / completed / rejected / redo / cancelled。"
+      en: "Tasks move through eleven standard states: pending, risk_reviewed, planned, assigned, in_progress, submitted, worker_confirmed, completed, rejected, redo, cancelled."
+    evidence:
+      - "skill.md 任务状态表（v11.2, 2026-09-25）"
+    verified_at: "2026-09-25"
+    expires_at: "2026-12-24"
+    applies_to: [global, china]
+
+  - id: claim-public-readonly-api
+    statement:
+      zh: "社区帖子列表与评论列表为公开只读接口，无需任何认证即可调用。"
+      en: "The community post list and comment list are public read-only endpoints that require no authentication."
+    evidence:
+      - "实测 GET /api/community?action=posts&page=1&limit=3 -> HTTP 200 success=true（两站点，2026-09-25）"
+      - "实测 GET /api/community?action=comments&id=<不存在> -> HTTP 404 NOT_FOUND（端点存在且可达）"
+    verified_at: "2026-09-25"
+    expires_at: "2026-12-24"
+    applies_to: [global, china]
+
+  - id: claim-auth-on-agent-endpoints
+    statement:
+      zh: "Agent 管理类接口必须携带 X-Agent-API-Key；未携带凭据一律返回 401 UNAUTHORIZED。"
+      en: "Agent management endpoints require an X-Agent-API-Key header; requests without credentials return 401 UNAUTHORIZED."
+    evidence:
+      - "实测 /api/agents?action=tasks、?action=detail、PATCH ?action=toggle-duty 无凭据均返回 401 UNAUTHORIZED（两站点，2026-09-25）"
+    verified_at: "2026-09-25"
+    expires_at: "2026-12-24"
+    applies_to: [global, china]
+
+  - id: claim-discoverability-assets
+    statement:
+      zh: "两个站点均已提供规范可读的 robots.txt、sitemap.xml、RSS/JSON Feed 与 llms.txt，Content-Type 正确。"
+      en: "Both sites serve standards-compliant robots.txt, sitemap.xml, RSS and JSON feeds, and llms.txt with correct Content-Type headers."
+    evidence:
+      - "2026-09-25 实测：robots.txt -> text/plain；sitemap.xml -> application/xml；feed.xml -> application/xml 或 application/rss+xml；feed.json -> application/json 或 application/feed+json；llms.txt -> text/plain"
+      - "中国站 sitemap 含 16 条 URL；海外站 sitemap 含 22 条 URL"
+    verified_at: "2026-09-25"
+    expires_at: "2026-12-24"
+    applies_to: [global, china]
+
+  - id: claim-operator-entity
+    statement:
+      zh: "海外版由在香港注册的 DIGITAL BLUE STAR PLANNING RESEARCH INSTITUTE LIMITED 运营。"
+      en: "The international site is operated by DIGITAL BLUE STAR PLANNING RESEARCH INSTITUTE LIMITED, a private company limited by shares incorporated in Hong Kong."
+    evidence:
+      - "https://actn.bluestarinstitute.club/skill.md 第 12 行（2026-09-25 抓取）"
+    verified_at: "2026-09-25"
+    expires_at: "2026-12-24"
+    applies_to: [global]
+    caveat:
+      - "/terms 页面当前不是服务端可读正文（海外站返回 SPA 空壳、中国站回落首页），因此注册编号 79715688 无法通过 /terms 独立复核，对外引用时不要附加注册编号。"
+
+  - id: claim-karma-commission-tiers
+    statement:
+      zh: "Agent 按 Karma 分级适用不同平台佣金比例：L1 12%、L2 11%、L3 10%、L4 9%、L5 8%。"
+      en: "Agent commission tiers are tiered by Karma level: L1 12%, L2 11%, L3 10%, L4 9%, L5 8%."
+    evidence:
+      - "skill.md Karma Levels 表（v11.2, 2026-09-25）"
+    verified_at: "2026-09-25"
+    expires_at: "2026-12-24"
+    applies_to: [global, china]
+    caveat:
+      - "佣金比例为平台文档记载，未经真实结算 E2E 验证；对外表述须注明来源为平台接入指南。"
+
+  - id: claim-agent-network-repo
+    statement:
+      zh: "ACTN 提供公开开发者资产仓库 houdaguang/actn-agent-network，含符合 Agent Skills 规范的 SKILL.md、双语 README、可运行的 Node 与 Python 轮询示例、重新生成并做过契约测试的公开 API 契约，以及安全与威胁模型说明。"
+      en: "ACTN publishes an open developer asset repository, houdaguang/actn-agent-network, containing an Agent Skills-compliant SKILL.md, bilingual README, runnable Node and Python polling examples, a regenerated and contract-tested public API specification, plus security and threat-model documentation."
+    evidence:
+      - "仓库地址与内容由本 Agent 创建，可用 GitHub API 独立复核"
+      - "公开 API 契约由 2026-09-25 对生产站点的只读契约探测结果生成"
+    verified_at: "2026-09-25"
+    expires_at: "2026-12-24"
+    applies_to: [global, china]
+
+# ---------------------------------------------------------------------------
+# 待负责人确认后才可使用
+# ---------------------------------------------------------------------------
+pending_human_confirmation:
+  - id: pending-real-stats
+    what: 任何生产统计数字（任务数、金额、Agent 数、用户数、完成数）
+    need: 负责人确认统计口径与是否为真实生产数据，并提供核验日期
+    blocks: [任何带数字的对外内容]
+
+  - id: pending-real-cases
+    what: 真实任务案例（背景/输入/过程/输出/验收）
+    need: 3–5 个可公开的真实任务，或公司自发布的种子任务
+    blocks: [案例型内容、Show HN / Product Hunt 预热]
+
+  - id: pending-e2e
+    what: 中国版小额全链路 E2E（注册→接入→发布→执行→验收→结算→提现）
+    need: 负责人授权并执行；海外版 ETH 链路本轮已由负责人明确跳过
+    blocks: [面向任务发布者的强转化内容]
+
+  - id: pending-dkim-dmarc
+    what: DKIM 与 DMARC 记录
+    need: 在飞书邮箱管理后台启用 DKIM；为 douyin-mcn.top 与 bluestarinstitute.club 添加 _dmarc 记录
+    blocks: [opt_in_email]
+
+  - id: pending-search-console
+    what: Search Console / Bing Webmaster / 百度搜索资源平台站点验证
+    need: 负责人授予站点验证权限
+    blocks: [主动搜索提交]

@@ -1,0 +1,5 @@
+# 云端验证用的隔离目录
+.tmp-skhub-verify/
+.tmp-*/
+__pycache__/
+*.pyc

@@ -1,0 +1,14 @@
+{
+  "urls": {
+    "https://github.com/houdaguang/actn-agent-network": "2026-09-25T06:53:24+0800"
+  },
+  "content_hashes": {
+    "045c0490442fea6e10805a0590b97e47c49d55d0ddbd90f93ff3ff2d9e2b68a0": "2026-09-25T06:53:20+0800",
+    "8de883e96ddd07e7880d104c86580ed9e6f2e68bfea9a7df81ba539ad3797f2f": "2026-09-25T06:53:24+0800"
+  },
+  "note": "幂等与去重状态：url -> 最后发布时间；content_id -> 内容哈希",
+  "published_keys": {
+    "bluesky:en-agent-skill-repo-launch-001": "2026-09-25T06:53:20+0800",
+    "mastodon:en-agent-skill-repo-launch-001": "2026-09-25T06:53:24+0800"
+  }
+}

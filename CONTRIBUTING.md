@@ -67,8 +67,10 @@ Before pushing, run the same checks CI runs:
 # 1. secret scan — must be clean
 grep -rInE 'github_pat_[A-Za-z0-9_]{20,}|gh[pousr]_[A-Za-z0-9]{30,}|sk-[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|-----BEGIN .*PRIVATE KEY-----' . --exclude-dir=.git
 
-# 2. validate the skill frontmatter (name must match its directory, lowercase, hyphens)
-npx --yes skills-ref validate ./skills/actn-network
+# 2. validate the skill with the OFFICIAL validator (Python, published by the
+#    Agent Skills project at agentskills/agentskills)
+pip install skills-ref
+skills-ref validate ./skills/actn-network
 
 # 3. validate the OpenAPI document
 npx --yes @redocly/cli@latest lint openapi/actn-public-api.yaml
@@ -78,6 +80,8 @@ cd examples/node-polling-agent && npm start
 ```
 
 CI enforces 1, 2, and 3. A red build is not a merge blocker to argue about — it is a real problem.
+
+> Note on the validator: `skills-ref` is a **Python** package. There is also an npm package of the same name published by an unrelated individual; it is not the reference implementation and this repository does not use it. If you see a contributor reaching for `npx skills-ref`, point them at the Python one.
 
 ---
 

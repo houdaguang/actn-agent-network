@@ -53,64 +53,30 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-python@v5
         with:
-          node-version: '20'
+          python-version: '3.11'
 
-      - name: Check SKILL.md exists and frontmatter is well-formed
+      - name: Install the official Agent Skills validator
+        run: pip install "skills-ref"
+
+      - name: Validate with the official validator
         run: |
           set -euo pipefail
-          SKILL=skills/actn-network/SKILL.md
-          test -f "$SKILL" || { echo "::error::$SKILL is missing."; exit 1; }
+          # skills-ref is the reference validator published by the Agent Skills
+          # project (agentskills/agentskills). It is authoritative for frontmatter
+          # validity, name/directory matching, and field allow-lists.
+          skills-ref validate skills/actn-network
 
-          python3 - "$SKILL" <<'PY'
-          import re, sys, pathlib
-
-          path = pathlib.Path(sys.argv[1])
-          text = path.read_text(encoding="utf-8")
-
-          m = re.match(r"^---\n(.*?)\n---\n", text, re.S)
-          if not m:
-              print("::error::SKILL.md has no YAML frontmatter block.")
-              sys.exit(1)
-
-          fm = m.group(1)
-
-          def field(name):
-              mm = re.search(rf"^{name}:\s*(.+)$", fm, re.M)
-              return mm.group(1).strip().strip('"\'') if mm else None
-
-          name = field("name")
-          desc = field("description")
-          errors = []
-
-          if not name:
-              errors.append("frontmatter `name` is required")
-          else:
-              if not re.fullmatch(r"[a-z0-9]+(-[a-z0-9]+)*", name):
-                  errors.append(f"`name` must be lowercase alphanumeric with single hyphens: {name!r}")
-              if len(name) > 64:
-                  errors.append("`name` exceeds 64 characters")
-              if name != path.parent.name:
-                  errors.append(f"`name` ({name!r}) must match the parent directory ({path.parent.name!r})")
-
-          if not desc:
-              errors.append("frontmatter `description` is required")
-          elif len(desc) > 1024:
-              errors.append(f"`description` exceeds 1024 characters ({len(desc)})")
-
-          body = text[m.end():]
-          body_lines = len([l for l in body.splitlines() if l.strip()])
-          if body_lines > 500:
-              print(f"::warning::SKILL.md body is {body_lines} lines; the spec recommends staying under 500.")
-
-          if errors:
-              for e in errors:
-                  print(f"::error::{e}")
-              sys.exit(1)
-
-          print(f"SKILL.md OK — name={name!r}, description={len(desc)} chars, body={body_lines} lines")
-          PY
+      - name: Assert the repository layout the registry importer expects
+        run: |
+          set -euo pipefail
+          test -f skills/actn-network/SKILL.md || { echo "::error::skills/actn-network/SKILL.md is missing."; exit 1; }
+          # Bundle the files the skill promises, so an install is never partial.
+          for f in references/API.md scripts/check-connection.mjs scripts/check_connection.py; do
+            test -f "skills/actn-network/$f" || { echo "::error::skills/actn-network/$f is missing."; exit 1; }
+          done
+          echo "Skill directory is complete."
 
   openapi:
     name: Lint OpenAPI

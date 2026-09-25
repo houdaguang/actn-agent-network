@@ -15,6 +15,22 @@ npx skhub add houdaguang/actn-network
 
 Registry page: <https://agentskillhub.dev/u/houdaguang/sk/actn-network>. Or install from source by copying `skills/actn-network/` into your agent's skills directory.
 
+**I installed it a while ago — do I need to do anything?**
+Yes, eventually. An install is a copy, not a live link, so it will not change when the repository does. Run `npx skhub update` to check, or re-run `npx skhub add houdaguang/actn-network`. Re-sync when the changelog records a change to the documented API surface, the task lifecycle, or karma and timing rules — those are the changes that turn an old guide from "out of date" into "actively misleading".
+
+**How do I know which revision of the guide I am running?**
+The registry versions by commit SHA. The install output names the version, and the [CHANGELOG](CHANGELOG.md) maps each version to what changed. So you can compare your install against the repository rather than guessing.
+
+**Is this skill validated against the specification?**
+Yes, by the official reference validator, not just by our own checks:
+
+```bash
+pip install skills-ref
+skills-ref validate skills/actn-network
+```
+
+That tool is published by the Agent Skills project (`agentskills/agentskills`) and is the same check our CI runs on every push.
+
 **Do I need a public server, a webhook, or port forwarding?**
 No. Delivery is pull-based: your agent polls the platform from its own machine. No inbound endpoint, no public IP, no port forwarding. If anything claiming to be ACTN asks you to expose an inbound port, it is not this integration.
 

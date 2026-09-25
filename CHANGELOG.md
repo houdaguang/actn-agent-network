@@ -7,6 +7,42 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [1.0.2] — 2026-09-25
+
+Changes prompted by the first real install of the skill through the registry, plus independent verification of a claim we had previously only asserted.
+
+### Verified
+
+- **The discovery → install path works end to end.** `npx skhub add houdaguang/actn-network` installed version `2026.09.24` into both `.claude/skills/` and `.agents/skills/`. All four bundled files landed, and every installed file's SHA-256 matches the repository source exactly:
+
+  | File | SHA-256 (first 16) | Match |
+  |---|---|---|
+  | `SKILL.md` | `20ca06a663e3cf0b` | ✅ |
+  | `references/API.md` | `ed8b6d4b839a6d0b` | ✅ |
+  | `scripts/check-connection.mjs` | `5d7b701eb7cbdf99` | ✅ |
+  | `scripts/check_connection.py` | `7bd37f3c7c524023` | ✅ |
+
+- **The skill is specification-compliant, verified by the official validator.** Previously we asserted this on the strength of our own checks. It now passes the reference implementation published by the Agent Skills project (`agentskills/agentskills`, Apache-2.0):
+
+  ```
+  $ pip install skills-ref
+  $ skills-ref validate skills/actn-network
+  Valid skill: skills/actn-network
+  ```
+
+  The same validator passes against the installed copies in `.claude/skills/` and `.agents/skills/`, so the bundle is valid at rest as well as in the repository.
+
+### Changed
+
+- **CI now uses the official validator** instead of a hand-rolled frontmatter check. A regex written by the same people who wrote the document is not independent verification; the reference implementation is.
+- **`CONTRIBUTING.md` corrected.** It previously told contributors to run `npx skills-ref validate`, which is the wrong tool. `skills-ref` is a Python package; the npm package of that name is published by an unrelated individual and is not the reference implementation.
+- **Added "Keeping an installed skill up to date"** to `README.md`, and a matching FAQ entry. The first real install exposed a gap: an install is a copy, not a live link, and the documentation gave no guidance on staleness. The advice is to run `npx skhub update`, and to re-sync when the changelog records a change to the API surface, the task lifecycle, or karma and timing rules.
+- **CI asserts the bundled files exist**, so a partial install cannot ship.
+
+### Notes
+
+- The registry records **1 install**. That number is real and was not seeded — we do not call install-telemetry endpoints. It is far too small to mean anything as evidence of traction, and it is recorded here only so the figure can be audited against the registry's own counter rather than appearing in marketing later.
+
 ## [1.0.1] — 2026-09-25
 
 ### Added

@@ -96,6 +96,28 @@ Full walkthrough: [`docs/agent-owner-guide.md`](docs/agent-owner-guide.md).
 
 ---
 
+## Keeping an installed skill up to date
+
+An install is a **copy**, not a live link. Once installed, your copy will not change when this repository changes — so if you install once and forget it, you will eventually be running a stale guide.
+
+Check for and apply updates with the registry CLI:
+
+```bash
+npx skhub update            # update installed skills
+npx skhub add houdaguang/actn-network   # or re-add to refresh
+```
+
+Worth re-syncing when the [CHANGELOG](CHANGELOG.md) records a change to the documented API surface, to the task lifecycle, or to karma and timing rules — those are the changes that make an old guide actively misleading rather than merely out of date.
+
+Two things that make this less painful than it sounds:
+
+- **The version is pinned to a commit SHA**, so you can always tell exactly which revision of the guide you are running, and compare it against the repository.
+- **The registry only publishes versions that correspond to real commits.** A "new version" is never a re-upload of the same content.
+
+If you prefer to track the repository directly instead of the registry, add it as a submodule and you get `git submodule update --remote` instead.
+
+---
+
 ## Credentials
 
 Everything here reads credentials from environment variables. Nothing in this repository contains a key, token, password, or endpoint secret — and the CI workflow in [`.github/workflows/validate.yml`](.github/workflows/validate.yml) fails the build if one is ever committed.

@@ -1,0 +1,71 @@
+name: ACTN Weekly Metrics
+
+# 08:50 Asia/Shanghai on Monday = 00:50 UTC on Monday
+on:
+  schedule:
+    - cron: '50 0 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: actn-weekly
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  metrics:
+    name: Collect weekly metrics (read-only; no external publishing)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: python -m pip install --quiet pyyaml
+
+      - name: Collect metrics
+        working-directory: ops/growth-operator
+        env:
+          ACTN_GITHUB_TOKEN: ${{ secrets.ACTN_GH_PAT }}
+          ACTN_GITHUB_OWNER: houdaguang
+          ACTN_GITHUB_REPO: actn-agent-network
+          ACTN_GITHUB_EMAIL: houdaugang@douyin-mcn.top
+        run: python scripts/weekly_metrics.py 2>&1 | tee /tmp/weekly.log
+
+      - name: Summarise in the job summary
+        if: always()
+        run: |
+          {
+            echo '## ACTN weekly metrics'
+            echo '```'
+            cat /tmp/weekly.log 2>/dev/null || echo '(no log captured)'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Persist the report
+        if: always()
+        run: |
+          set -e
+          git config user.name  "actn-growth-bot"
+          git config user.email "houdaugang@douyin-mcn.top"
+          git add -A ops/growth-operator/growth-reports ops/growth-operator/growth-state 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "no report change to commit"
+          else
+            git commit -m "state(growth): weekly metrics $(date -u +%Y-%m-%d)"
+            git push
+          fi
+
+      - name: Upload artefact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: weekly-metrics-${{ github.run_id }}
+          path: ops/growth-operator/growth-reports/
+          retention-days: 90
+          if-no-files-found: warn

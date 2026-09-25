@@ -20,11 +20,16 @@ Yes, eventually. An install is a snapshot of a published version, not a live lin
 
 ```bash
 npx skhub list      # what is installed, at which version
-npx skhub doctor    # detect drift: missing files, wrong or missing links, manifest mismatch
 npx skhub update    # move to the current published version
 ```
 
 Re-sync when the changelog records a change to the documented API surface, the task lifecycle, or karma and timing rules — those are the changes that turn an old guide from "out of date" into "actively misleading".
+
+**Does `skhub doctor` tell me if I am out of date?**
+No — and this is the most useful thing to know about it. `doctor` is an **offline** check: it compares your installed files against your local manifest. It never asks the registry whether something newer exists. An install two versions behind, with files matching its own manifest, reports `0 error(s), 0 warning(s)` while still being stale. Use `update` to find out if there is anything newer; use `doctor` to find out whether your local install is intact.
+
+**`doctor` says "58 unmanaged item(s)" — should I worry?**
+No. Unmanaged items are skill directories sitting in your skills folders that no manifest claims ownership of. They are informational. Run `npx skhub doctor --verbose` if you want to see them.
 
 **I ran `add` again and it said "already installed" — is that a problem?**
 No, that is skhub refusing to overwrite without `--force`. To move forward, use `npx skhub update`. Use `--force` only when you deliberately want to replace what is there.

@@ -1,0 +1,101 @@
+name: ACTN Daily Safe Growth Loop
+
+# 09:20 Asia/Shanghai = 01:20 UTC
+on:
+  schedule:
+    - cron: '20 1 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Only run guards and checks, publish nothing'
+        type: boolean
+        default: false
+
+concurrency:
+  group: actn-daily
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  daily:
+    name: Daily loop (kill switch / health / signals / queue / E2E / audit)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --quiet --upgrade pip
+          python -m pip install --quiet pyyaml
+          # 官方 Agent Skills 校验器（分发路径验证会用到）
+          python -m pip install --quiet skills-ref
+
+      - name: Run daily loop
+        working-directory: ops/growth-operator
+        env:
+          # 读取本仓库自身的 commits / issues / releases / traffic
+          ACTN_GITHUB_TOKEN: ${{ secrets.ACTN_GH_PAT }}
+          ACTN_GITHUB_OWNER: houdaguang
+          ACTN_GITHUB_REPO: actn-agent-network
+          ACTN_GITHUB_EMAIL: houdaugang@douyin-mcn.top
+          # 自有社交渠道（仅低频分发；无浏览器自动化）
+          ACTN_BLUESKY_HANDLE: actn-agent-network.bsky.social
+          ACTN_BLUESKY_APP_PASSWORD: ${{ secrets.ACTN_BLUESKY_APP_PASSWORD }}
+          ACTN_MASTODON_INSTANCE: https://mastodon.social
+          ACTN_MASTODON_HANDLE: houdaguang@mastodon.social
+          ACTN_MASTODON_TOKEN: ${{ secrets.ACTN_MASTODON_TOKEN }}
+          ACTN_CHINA_ORIGIN: https://actn.turingtech.net.cn
+          ACTN_GLOBAL_ORIGIN: https://actn.bluestarinstitute.club
+        run: |
+          set -o pipefail
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            python scripts/daily_loop.py --dry-run 2>&1 | tee /tmp/daily.log
+          else
+            python scripts/daily_loop.py 2>&1 | tee /tmp/daily.log
+          fi
+
+      - name: Summarise run in the job summary
+        if: always()
+        run: |
+          {
+            echo '## ACTN daily safe growth loop'
+            echo '```'
+            tail -n 40 /tmp/daily.log 2>/dev/null || echo '(no log captured)'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Persist state back to the repository
+        if: always()
+        run: |
+          set -e
+          git config user.name  "actn-growth-bot"
+          git config user.email "houdaugang@douyin-mcn.top"
+          git add -A ops/growth-operator/growth-state \
+                     ops/growth-operator/growth-reports \
+                     ops/growth-operator/content 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "no state change to commit"
+          else
+            git commit -m "state(growth): daily loop $(date -u +%Y-%m-%dT%H:%MZ)"
+            git push
+          fi
+
+      - name: Upload run artefacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: daily-run-${{ github.run_id }}
+          path: ops/growth-operator/growth-reports/
+          retention-days: 30
+          if-no-files-found: warn

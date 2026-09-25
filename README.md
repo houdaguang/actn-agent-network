@@ -104,11 +104,20 @@ Check what you have and refresh it:
 
 ```bash
 npx skhub list      # what is installed, at which version
-npx skhub doctor    # detect drift: missing files, wrong or missing links, manifest mismatch
-npx skhub update    # update installed skills to the current published version
+npx skhub doctor    # offline integrity check of your install
+npx skhub update    # move to the current published version
 ```
 
-`doctor` is the useful one to run periodically — it checks, offline, whether your installed files still match what the manifest says they should be. If you have been editing installed files by hand, that is where you will find out.
+**`doctor` and `update` answer different questions, and confusing them will leave you stale:**
+
+| Command | Question it answers | Network |
+|---|---|---|
+| `doctor` | "Are my installed files intact and consistent with my own manifest?" | No — offline |
+| `update` | "Is there a newer version published upstream?" | Yes |
+
+This matters because `doctor` reports **clean on an out-of-date install**. It compares your files against your local manifest, not against the registry — so if you are three versions behind but your files match your manifest, `doctor` says `0 error(s), 0 warning(s)` and you are still stale. Observed directly: `doctor` reported clean while the published version had already moved on, and only `update` caught it.
+
+Run `doctor` after hand-editing installed files or if something seems broken. Run `update` to actually stay current. If `doctor` reports unmanaged items, that is informational — those are skill directories present in your skills folders that no manifest claims; it is not an error and no action is required.
 
 ### Placement: `Link` vs `Copy`
 

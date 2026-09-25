@@ -47,6 +47,27 @@ A second install attempt — this time choosing `Link` placement — surfaced tw
 - **Re-adding an installed skill is skipped, not updated.** `skhub add` prints `already installed ... Use --force to overwrite` and changes nothing. The three commands that matter are now documented together: `list`, `doctor` (detects drift offline), and `update`.
 - **The manifest, not the install log, is the record of what you are running.** `skills.json` at the project root (or `~/.skhub/skills.json` with `--global`) carries the version, the commit SHA, and every installed file.
 - **`skhub` never silently falls back to copying.** If `Link` is requested and links are unavailable for the scope, it fails instead of quietly handing you a copy; unattended use needs `--allow-copy`.
+- **`doctor` does not tell you that you are out of date.** It is an **offline** check: it compares your installed files against your local manifest and never asks the registry whether something newer exists. Observed directly: with a stale install, `doctor` returned `{"findings": [], "fixed": [], "warnings": []}` — a clean bill of health for an out-of-date skill. The README now carries an explicit table separating `doctor`'s question ("are my files intact?") from `update`'s ("is there anything newer?"), because running the wrong one and seeing no findings is exactly how a user stays stale while believing they checked.
+- **`doctor`'s unmanaged items are informational.** A run reported `58 unmanaged item(s)`; these are skill directories in your skills folders that no manifest claims, and they require no action. Now stated so it does not read as an error.
+
+### Verified
+
+- **The full distribution path is verified end to end, automatically, in an isolated scope.** A harness installs a pinned older version (`@2026.09.24`), runs `doctor`, runs `update`, and re-asserts:
+
+  | Assertion | Result |
+  |---|---|
+  | Install lands in an isolated project scope, not the user's home | ✅ |
+  | `doctor` non-interactive, reports no findings while stale | ✅ (confirms the semantics above) |
+  | After `update`, manifest version == registry version | ✅ `2026.09.25` |
+  | After `update`, manifest commitSha == registry commitSha | ✅ `966c796399` |
+  | All four files in both `.claude` and `.agents` byte-match the repository | ✅ 8/8 |
+  | `doctor` clean at the current version | ✅ |
+
+  15/15 checks pass, and the harness is repeatable and idempotent — it reuses its scratch directory rather than deleting it, so it does not depend on delete permissions.
+
+- **The registry's `totalInstalls` counter is no longer usable as evidence of adoption.** It now includes installs performed by the verification harness above. It reads 4; an unknown share of that is our own testing. It is recorded here so nobody later quotes it as traction.
+
+  Verification is worth keeping and the counter is worth distrusting — so we keep verifying and stop treating the number as a signal.
 
 ### Changed (skill contents)
 

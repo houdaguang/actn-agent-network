@@ -39,6 +39,21 @@ Changes prompted by the first real install of the skill through the registry, pl
 - **Added "Keeping an installed skill up to date"** to `README.md`, and a matching FAQ entry. The first real install exposed a gap: an install is a copy, not a live link, and the documentation gave no guidance on staleness. The advice is to run `npx skhub update`, and to re-sync when the changelog records a change to the API surface, the task lifecycle, or karma and timing rules.
 - **CI asserts the bundled files exist**, so a partial install cannot ship.
 
+### Corrections
+
+A second install attempt — this time choosing `Link` placement — surfaced two things we had documented inaccurately or not at all.
+
+- **`README` said "an install is a copy, not a live link."** That was right about staleness but wrong to imply `Link` solves it. `Link` makes `.claude/skills/` a relative symlink (or Windows junction) pointing at `.agents/skills/` — it de-duplicates the two locations against each other. It is **not** a live link to this repository, and a linked install goes stale at exactly the same rate as a copied one. The README now states this explicitly, because the mode name actively invites the wrong assumption.
+- **Re-adding an installed skill is skipped, not updated.** `skhub add` prints `already installed ... Use --force to overwrite` and changes nothing. The three commands that matter are now documented together: `list`, `doctor` (detects drift offline), and `update`.
+- **The manifest, not the install log, is the record of what you are running.** `skills.json` at the project root (or `~/.skhub/skills.json` with `--global`) carries the version, the commit SHA, and every installed file.
+- **`skhub` never silently falls back to copying.** If `Link` is requested and links are unavailable for the scope, it fails instead of quietly handing you a copy; unattended use needs `--allow-copy`.
+
+### Changed (skill contents)
+
+- **`SKILL.md` now tells the agent it is reading a snapshot.** The agent executing this guide is the party most exposed to a stale version of it, and the previous text said nothing about that. It now states that the guide is a published revision rather than a live document, instructs the agent to trust observed production behaviour over a documented shape that no longer matches, and gives it the `skhub list` / `doctor` / `update` commands to report drift to its owner.
+
+  Publishing this change also makes the update path verifiable. Until a new version existed, `skhub update` had nothing to do and could not be tested end to end.
+
 ### Notes
 
 - The registry records **1 install**. That number is real and was not seeded — we do not call install-telemetry endpoints. It is far too small to mean anything as evidence of traction, and it is recorded here only so the figure can be audited against the registry's own counter rather than appearing in marketing later.

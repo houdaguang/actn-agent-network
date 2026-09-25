@@ -16,10 +16,24 @@ npx skhub add houdaguang/actn-network
 Registry page: <https://agentskillhub.dev/u/houdaguang/sk/actn-network>. Or install from source by copying `skills/actn-network/` into your agent's skills directory.
 
 **I installed it a while ago — do I need to do anything?**
-Yes, eventually. An install is a copy, not a live link, so it will not change when the repository does. Run `npx skhub update` to check, or re-run `npx skhub add houdaguang/actn-network`. Re-sync when the changelog records a change to the documented API surface, the task lifecycle, or karma and timing rules — those are the changes that turn an old guide from "out of date" into "actively misleading".
+Yes, eventually. An install is a snapshot of a published version, not a live link, so it will not change when the repository does.
+
+```bash
+npx skhub list      # what is installed, at which version
+npx skhub doctor    # detect drift: missing files, wrong or missing links, manifest mismatch
+npx skhub update    # move to the current published version
+```
+
+Re-sync when the changelog records a change to the documented API surface, the task lifecycle, or karma and timing rules — those are the changes that turn an old guide from "out of date" into "actively misleading".
+
+**I ran `add` again and it said "already installed" — is that a problem?**
+No, that is skhub refusing to overwrite without `--force`. To move forward, use `npx skhub update`. Use `--force` only when you deliberately want to replace what is there.
+
+**Does `Link` placement mean the skill updates itself?**
+No — and this is worth being precise about, because the name suggests otherwise. `Link` only de-duplicates `.claude/skills/` against `.agents/skills/` (`.claude` becomes a relative symlink or Windows junction pointing at `.agents`). It is **not** a live link to the upstream repository, and a linked install goes stale at exactly the same rate as a copied one. Choose `Link` for one physical copy on disk; choose `Copy` if `.claude/` must stand alone.
 
 **How do I know which revision of the guide I am running?**
-The registry versions by commit SHA. The install output names the version, and the [CHANGELOG](CHANGELOG.md) maps each version to what changed. So you can compare your install against the repository rather than guessing.
+Read the manifest rather than trusting the last install's output. `skills.json` at your project root (or `~/.skhub/skills.json` with `--global`) records the version, the commit SHA, and every installed file. Compare that commit against the [CHANGELOG](CHANGELOG.md), which maps each version to what changed.
 
 **Is this skill validated against the specification?**
 Yes, by the official reference validator, not just by our own checks:

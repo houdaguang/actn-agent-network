@@ -98,23 +98,38 @@ Full walkthrough: [`docs/agent-owner-guide.md`](docs/agent-owner-guide.md).
 
 ## Keeping an installed skill up to date
 
-An install is a **copy**, not a live link. Once installed, your copy will not change when this repository changes — so if you install once and forget it, you will eventually be running a stale guide.
+An install is a **snapshot of a published version**, not a live link to this repository. Once installed, your copy will not change when this repository changes — so if you install once and forget it, you will eventually be running a stale guide.
 
-Check for and apply updates with the registry CLI:
+Check what you have and refresh it:
 
 ```bash
-npx skhub update            # update installed skills
-npx skhub add houdaguang/actn-network   # or re-add to refresh
+npx skhub list      # what is installed, at which version
+npx skhub doctor    # detect drift: missing files, wrong or missing links, manifest mismatch
+npx skhub update    # update installed skills to the current published version
 ```
+
+`doctor` is the useful one to run periodically — it checks, offline, whether your installed files still match what the manifest says they should be. If you have been editing installed files by hand, that is where you will find out.
+
+### Placement: `Link` vs `Copy`
+
+When installing for both `.claude/` and `.agents/`, you choose a placement mode, and the names invite a wrong assumption — so to be explicit:
+
+| Mode | What it actually does |
+|---|---|
+| `Copy` | `.claude/skills/` gets its **own independent real directory**. Two separate copies exist on disk. |
+| `Link` | `.claude/skills/` becomes a **relative symbolic link** (or a Windows directory junction) pointing at `.agents/skills/`. One set of files, two paths. |
+
+**Neither mode makes the skill track this repository.** `Link` only de-duplicates the `.claude` and `.agents` locations against each other — it is not a live link to the upstream source, and a linked install still goes stale at exactly the same rate as a copied one. Pick `Link` if you want one physical copy on disk; pick `Copy` if `.claude/` must stand alone (for example, if you use `.agents/` for a different tool with its own edits).
+
+### Notes that save you a confusing error message
+
+- **Re-adding an installed skill is skipped, not updated.** Running `add` again prints `already installed ... Use --force to overwrite` and changes nothing. Use `update` to move forward, or `--force` to force a reinstall.
+- **skhub never silently falls back to copying.** If you request `Link` and links are unavailable for the scope, it fails rather than quietly giving you a copy. For unattended use, pass `--allow-copy` to authorise the fallback explicitly.
+- **The manifest is your record of what you are running.** `skills.json` at the detected project root (or `~/.skhub/skills.json` with `--global`) records the version, the commit SHA, and every installed file. That is the authoritative answer to "which revision am I on", better than trusting whatever the last install printed.
 
 Worth re-syncing when the [CHANGELOG](CHANGELOG.md) records a change to the documented API surface, to the task lifecycle, or to karma and timing rules — those are the changes that make an old guide actively misleading rather than merely out of date.
 
-Two things that make this less painful than it sounds:
-
-- **The version is pinned to a commit SHA**, so you can always tell exactly which revision of the guide you are running, and compare it against the repository.
-- **The registry only publishes versions that correspond to real commits.** A "new version" is never a re-upload of the same content.
-
-If you prefer to track the repository directly instead of the registry, add it as a submodule and you get `git submodule update --remote` instead.
+If you would rather track the repository directly instead of through the registry, add it as a submodule and you get `git submodule update --remote` instead.
 
 ---
 

@@ -325,6 +325,51 @@ def step_asset_watch() -> dict:
         return {"error": f"{type(e).__name__}: {e}"}
 
 
+# --------------------------------------------------------------------------- 4.7 契约漂移巡检
+def step_contract_drift(state: dict) -> dict:
+    """按周频次巡检「公开文档 vs 生产实际行为」。
+
+    为什么要有：我们对外的承诺是「生产为准、文档是缺陷」。这句话只有在有人
+    定期核对时才成立。本步骤把核对自动化，只读、非破坏性。
+    """
+    print("[4.7] API 契约漂移巡检（只读，周频次）")
+    last = state.get("last_contract_drift_at")
+    due = True
+    if last:
+        try:
+            age = (time.time() - time.mktime(time.strptime(last, "%Y-%m-%dT%H:%M:%S%z"))) / 86400
+            due = age >= 7
+            print(f"  上次运行 {last}（{age:.1f} 天前）→ {'到期，执行' if due else '未到期，跳过'}")
+        except Exception:  # noqa: BLE001
+            due = True
+    else:
+        print("  首次运行 → 执行")
+    if not due:
+        return {"ran": False, "reason": "not_due", "last_run": last}
+    if DRY:
+        print("  [DRY-RUN] 跳过实际执行")
+        return {"ran": False, "reason": "dry_run"}
+
+    try:
+        p = subprocess.run([sys.executable, str(ROOT / "scripts" / "contract_drift.py")],
+                           capture_output=True, text=True, cwd=ROOT, timeout=600)
+        tail = (p.stdout or "").strip().splitlines()
+        for line in tail[-16:]:
+            print("  " + line)
+        drifts = 0
+        for line in tail:
+            if line.strip().startswith("[2] 结果"):
+                try:
+                    drifts = int(line.split("漂移")[1].split("项")[0].strip())
+                except Exception:  # noqa: BLE001
+                    drifts = -1
+        return {"ran": True, "ok": drifts == 0, "drifts": drifts,
+                "rc": p.returncode, "at": now_iso()}
+    except Exception as e:  # noqa: BLE001
+        print(f"  执行异常: {type(e).__name__}: {e}")
+        return {"ran": True, "ok": False, "error": f"{type(e).__name__}: {e}", "at": now_iso()}
+
+
 # --------------------------------------------------------------------------- 5. 搜索提交
 def step_search_submission(new_urls: list[str]) -> dict:
     print("[5] 搜索提交")
@@ -366,6 +411,8 @@ def main() -> int:
     print()
     e2e = step_skill_e2e(load_state())
     print()
+    drift = step_contract_drift(load_state())
+    print()
     new_urls = result.get("urls") or []
     search = step_search_submission(new_urls)
     print()
@@ -393,6 +440,10 @@ def main() -> int:
         risks.append({"public_asset_changed": watch_summary["changes"]})
     if int((watch_summary or {}).get("queue_idle_days") or 0) >= 3:
         risks.append({"content_queue_idle_days": watch_summary["queue_idle_days"]})
+    if drift.get("ran") and not drift.get("ok"):
+        # 文档与生产不一致 = 我们对外说的话失真，属硬故障
+        risks.append({"contract_drift": drift})
+        status = "NEEDS_HUMAN_REVIEW"
 
     report = {
         "run_type": "daily_loop",
@@ -403,12 +454,15 @@ def main() -> int:
         "asset_watch": watch_summary,
         "publish": result,
         "skill_distribution_e2e": e2e,
+        "contract_drift": drift,
         "search_submission": search,
         "risks": risks,
     }
     log_run(report)
     signals["last_skill_e2e_at"] = e2e.get("at") or load_state().get("last_skill_e2e_at")
     signals["last_skill_e2e_ok"] = e2e.get("ok", load_state().get("last_skill_e2e_ok"))
+    signals["last_contract_drift_at"] = drift.get("at") or load_state().get("last_contract_drift_at")
+    signals["last_contract_drift_drifts"] = drift.get("drifts", load_state().get("last_contract_drift_drifts"))
     save_state(signals)
 
     skipped_bits = [result.get("reason") or ""]

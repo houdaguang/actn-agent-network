@@ -131,10 +131,30 @@ def main() -> int:
                     installs = s_.get("totalInstalls")
         except Exception:  # noqa: BLE001
             pass
-    emit(f"| totalInstalls | {installs if installs is not None else 'n/a'} |")
+    emit(f"| totalInstalls（注册表原始计数） | {installs if installs is not None else 'n/a'} |")
+
+    # 扣除自测：分发路径验证会真实安装该技能，会把计数顶上去
+    attr = {}
+    ap = ROOT / "growth-state" / "install-attribution.json"
+    if ap.exists():
+        try:
+            attr = json.loads(ap.read_text(encoding="utf-8"))
+        except Exception:  # noqa: BLE001
+            attr = {}
+    self_test = int(attr.get("self_test_delta_sum") or 0)
+    emit(f"| 其中：自测产生（已归因） | {self_test} |")
+    emit(f"| 归因起始时间 | {attr.get('attribution_started_at') or 'n/a'} |")
+    if installs is not None:
+        net = installs - self_test
+        emit(f"| **净外部安装（上界，非真值）** | **{net}** |")
+    else:
+        emit("| 净外部安装（上界） | 不可得（注册表未返回计数） |")
     emit()
-    emit("⚠️ **该计数已被污染**：自动化的分发路径验证（`verify_skill_install.py`）会真实安装该技能，")
-    emit("因此 `totalInstalls` 包含我们自己测试产生的安装。**不得作为采用度证据引用。**")
+    emit("⚠️ **计数口径说明（重要）**：自动化的分发路径验证（`verify_skill_install.py`）")
+    emit("会**真实安装**该技能，因此注册表的原始 `totalInstalls` 包含我们自己的测试安装。")
+    emit("上表净值为 **上界而非真值**：归因机制启用**之前**发生的自测运行没有被计入，")
+    emit("且注册表可能把 `add` 与 `update` 各计一次（实测单次运行 delta 常为 2）。")
+    emit("因此真实外部安装数**很可能低于**该上界。任何引用都必须连同这句限定一起引用。")
     emit()
 
     # ---------------------------------------------------------------- 自有社交

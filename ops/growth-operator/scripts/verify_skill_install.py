@@ -92,6 +92,64 @@ def registry_state() -> dict:
                       for f in (lv.get("fileManifest") or [])}}
 
 
+def registry_installs() -> int | None:
+    """读注册表公开计数 totalInstalls。
+
+    注意：本脚本会**真实安装**该技能，因此每次运行都会推高这个计数。
+    正因如此才需要记录自测占比——否则这个数字会被我们自己的验证污染，
+    无法当作外部采用度证据。
+    """
+    req = urllib.request.Request(
+        "https://agentskillhub.dev/api/v1/search?q=actn&limit=10")
+    req.add_header("Accept", "application/json")
+    req.add_header("User-Agent", "actn-growth-verify/1.0")
+    try:
+        with urllib.request.urlopen(req, timeout=60,
+                                    context=ssl.create_default_context()) as r:
+            for s in (json.loads(r.read().decode("utf-8", "replace")).get("skills") or []):
+                if s.get("sourceIdentifier") == "houdaguang/actn-agent-network":
+                    return s.get("totalInstalls")
+    except Exception:  # noqa: BLE001
+        pass
+    return None
+
+
+def attribution_path() -> Path:
+    return ROOT / "growth-state" / "install-attribution.json"
+
+
+def record_attribution(before: int | None, after: int | None, run_at: str) -> dict:
+    """累计记录"由自测产生的安装数"，供周报给出净外部安装。
+
+    计数口径说明：一次 E2E 运行会执行 add（计一次安装）与 update（通常不计新增）。
+    因此 delta 通常为 1；若注册表统计口径变化，delta 会如实反映，不做平滑。
+    """
+    p = attribution_path()
+    d = json.loads(p.read_text(encoding="utf-8")) if p.exists() else {
+        "note": (
+            "注册表 totalInstalls 包含本脚本自测产生的安装。"
+            "净外部安装（上界）= totalInstalls − self_test_delta_sum。"
+            "⚠️ 这是**上界而非真值**：本归因机制启用之前发生的自测运行未被计入，"
+            "且注册表计数口径可能把 add 与 update 各计一次（实测 delta 常为 2 而非 1）。"
+            "因此真实外部安装数很可能低于该上界。引用时必须注明这一点。"
+        ),
+        "attribution_started_at": run_at,
+        "self_test_delta_sum": 0, "runs": [],
+    }
+    delta = None
+    if before is not None and after is not None:
+        delta = max(0, after - before)
+        d["self_test_delta_sum"] = int(d.get("self_test_delta_sum", 0)) + delta
+    d.setdefault("runs", []).append({
+        "at": run_at, "installs_before": before, "installs_after": after,
+        "self_test_delta": delta,
+    })
+    d["runs"] = d["runs"][-200:]
+    d["last_updated"] = run_at
+    p.write_text(json.dumps(d, ensure_ascii=False, indent=2), encoding="utf-8")
+    return d
+
+
 def main() -> int:
     print("=" * 76)
     print("技能分发路径端到端验证（隔离作用域，不影响用户既有安装）")
@@ -99,9 +157,11 @@ def main() -> int:
     print("=" * 76)
 
     reg = registry_state()
+    installs_before = registry_installs()
     print(f"\n[0] 注册表当前状态")
     print(f"    version   : {reg['version']}")
     print(f"    commitSha : {reg['commitSha'][:12]}")
+    print(f"    installs  : {installs_before}（含本脚本往期自测，稍后记录本次增量）")
     if not reg.get("files"):
         print(f"[error] 注册表未返回 fileManifest，无法建立比对真值")
         return 2
@@ -210,6 +270,20 @@ def main() -> int:
     record("update 后 doctor 报告 0 error", rc == 0 and errs == 0,
            json.dumps(summary, ensure_ascii=False)[:120] if summary else out.splitlines()[-1:][0][:120] if out else "")
 
+    # ---------------------------------------------------------------- 6. 安装量归因
+    installs_after = registry_installs()
+    attribution = record_attribution(installs_before, installs_after,
+                                     time.strftime("%Y-%m-%dT%H:%M:%S%z"))
+    delta = attribution["runs"][-1]["self_test_delta"] if attribution.get("runs") else None
+    print(f"\n[6] 安装量归因（修正计数污染）")
+    print(f"    运行前 {installs_before} -> 运行后 {installs_after}，本次自测增量 {delta}")
+    print(f"    累计自测增量 {attribution.get('self_test_delta_sum')}")
+    if installs_after is not None:
+        net = installs_after - int(attribution.get("self_test_delta_sum", 0))
+        print(f"    净外部安装（估值） {net}"
+              + ("  ← 为 0 或负数时说明目前没有任何可证实的自测之外的安装" if net <= 0 else ""))
+        record("安装量归因已记录", True, f"total={installs_after} self_test={attribution.get('self_test_delta_sum')} net={net}")
+
     # ---------------------------------------------------------------- 汇总
     print("\n" + "=" * 76)
     passed = sum(1 for _, ok, _ in results if ok)
@@ -228,9 +302,17 @@ def main() -> int:
         "results": [{"check": n, "pass": ok, "detail": d} for n, ok, d in results],
         "steps": steps,
         "passed": passed, "total": len(results),
+        "install_attribution": {
+            "installs_before": installs_before,
+            "installs_after": installs_after,
+            "self_test_delta": delta,
+            "self_test_delta_sum": attribution.get("self_test_delta_sum"),
+            "net_external_estimate": (installs_after - int(attribution.get("self_test_delta_sum", 0)))
+            if installs_after is not None else None,
+        },
         "side_effect_on_registry_counter": (
             "本验证会真实安装该公开技能，因此会推高注册表的 totalInstalls。"
-            "该计数因此**不能**再作为外部采用度的证据，只能用于与注册表自身对账。"),
+            "增量已记录在 growth-state/install-attribution.json，周报据此给出净外部安装估值。"),
     }
     out_path = ROOT / "growth-reports" / "_skill-install-e2e.json"
     out_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")

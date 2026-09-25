@@ -1,0 +1,14 @@
+{
+  "note": "注册表 totalInstalls 包含本脚本自测产生的安装。净外部安装（上界）= totalInstalls − self_test_delta_sum。⚠️ 这是**上界而非真值**：归因机制启用之前发生的自测运行未被计入，且注册表计数口径可能把 add 与 update 各计一次（实测 delta 常为 2 而非 1）。因此真实外部安装数很可能低于该上界。引用时必须注明。",
+  "self_test_delta_sum": 2,
+  "runs": [
+    {
+      "at": "2026-09-25T18:57:26+0800",
+      "installs_before": 14,
+      "installs_after": 16,
+      "self_test_delta": 2
+    }
+  ],
+  "last_updated": "2026-09-25T18:57:26+0800",
+  "attribution_started_at": "2026-09-25T18:57:26+0800"
+}

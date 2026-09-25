@@ -19,7 +19,10 @@ global:
   require_official_api: true
   browser_automation_for_external_platforms: false
   # 宪法性边界：禁止修改任何现有生产代码仓与线上 Vercel 部署
-  immutable_assets:    - "任何现有 ACTN 生产代码仓"    - "actn.turingtech.net.cn 的现有代码仓与线上部署"    - "actn.bluestarinstitute.club 的现有代码仓与线上部署"
+  immutable_assets:
+    - "(internal production repository; path not published)"
+    - "https://actn.turingtech.net.cn"
+    - "https://actn.bluestarinstitute.club"
     - "任何 turingtech.net.cn / bluestarinstitute.club 的现有代码仓与其 Vercel 部署"
   owned_new_repositories:
     - "houdaguang/actn-agent-network"

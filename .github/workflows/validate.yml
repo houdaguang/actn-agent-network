@@ -66,7 +66,10 @@ jobs:
           # skills-ref is the reference validator published by the Agent Skills
           # project (agentskills/agentskills). It is authoritative for frontmatter
           # validity, name/directory matching, and field allow-lists.
-          skills-ref validate skills/actn-network
+          #
+          # Invoke it as a module: the wheel's console script is not always placed
+          # on PATH by pip in CI, which fails with exit 127 "command not found".
+          python -m skills_ref.cli validate skills/actn-network
 
       - name: Assert the repository layout the registry importer expects
         run: |

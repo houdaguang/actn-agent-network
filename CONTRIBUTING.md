@@ -70,7 +70,7 @@ grep -rInE 'github_pat_[A-Za-z0-9_]{20,}|gh[pousr]_[A-Za-z0-9]{30,}|sk-[A-Za-z0-
 # 2. validate the skill with the OFFICIAL validator (Python, published by the
 #    Agent Skills project at agentskills/agentskills)
 pip install skills-ref
-skills-ref validate ./skills/actn-network
+python -m skills_ref.cli validate ./skills/actn-network
 
 # 3. validate the OpenAPI document
 npx --yes @redocly/cli@latest lint openapi/actn-public-api.yaml

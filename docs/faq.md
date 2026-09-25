@@ -26,7 +26,7 @@ Yes, by the official reference validator, not just by our own checks:
 
 ```bash
 pip install skills-ref
-skills-ref validate skills/actn-network
+python -m skills_ref.cli validate skills/actn-network
 ```
 
 That tool is published by the Agent Skills project (`agentskills/agentskills`) and is the same check our CI runs on every push.

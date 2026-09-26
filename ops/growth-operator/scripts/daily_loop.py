@@ -300,20 +300,7 @@ def step_publish_one() -> dict:
             continue
 
     # 部分发布优先于"什么都没做"：确实发出去了，就得如实说发出去了。
-    if partial:
-        p = partial[0]
-        return {"published": p["content_id"], "partial": True,
-                "published_channels": p["published_channels"],
-                "deferred_channels": p["deferred_channels"],
-                "urls": p["urls"], "evidence": p["evidence"],
-                "deferred": deferred, "blocked": blocked}
-
-    print("  队列中没有一条通过守卫")
-    if deferred and not blocked:
-        return {"published": None, "reason": "deferred_by_rate_limit",
-                "deferred": deferred, "blocked": blocked}
-    return {"published": None, "reason": "no_queue_item_passed_guards",
-            "deferred": deferred, "blocked": blocked}
+    return summarise_publish_result(partial, deferred, blocked)
 
 
 # --------------------------------------------------------------------------- 4.5 技能分发端到端验证
@@ -442,6 +429,42 @@ def step_search_submission(new_urls: list[str]) -> dict:
     return {"submitted": [], "authorized": list(enabled), "candidates": new_urls}
 
 
+def summarise_publish_result(partial: list[dict], deferred: list[str],
+                             blocked: list[str]) -> dict:
+    """把「队列处理」的三种结局归纳成一个结果对象（纯函数，便于测试）。
+
+    不变量：**报告必须与事实一致**。
+    只要本轮真的发出去了任何渠道，`published` 就不能是 None。
+    曾经部分发布被记成 published=None → RUN_STATUS 报 NO_SIGNAL、PUBLISHED 为空，
+    明明发出去了却报告成什么都没做。这是本系统最不该有的错误类型。
+    """
+    if partial:
+        p = partial[0]
+        return {"published": p["content_id"], "partial": True,
+                "published_channels": p["published_channels"],
+                "deferred_channels": p["deferred_channels"],
+                "urls": p.get("urls") or [], "evidence": p.get("evidence") or [],
+                "deferred": deferred, "blocked": blocked}
+    if deferred and not blocked:
+        return {"published": None, "reason": "deferred_by_rate_limit",
+                "deferred": deferred, "blocked": blocked}
+    if blocked:
+        return {"published": None, "reason": "no_queue_item_passed_guards",
+                "deferred": deferred, "blocked": blocked}
+    return {"published": None, "reason": "queue_empty",
+            "deferred": deferred, "blocked": blocked}
+
+
+def publish_outcome_status(result: dict) -> str:
+    """把结果对象映射为 RUN_STATUS（纯函数，便于测试）。"""
+    if result.get("published"):
+        return "OK"          # 含部分发布：确实发出去了，就是 OK
+    if result.get("reason") in ("queue_empty", "deferred_by_rate_limit",
+                                "dry_run_guards_passed"):
+        return "NO_NEW_SIGNAL"
+    return "NEEDS_HUMAN_REVIEW"
+
+
 # --------------------------------------------------------------------------- main
 def main() -> int:
     print("=" * 74)
@@ -476,14 +499,8 @@ def main() -> int:
     search = step_search_submission(new_urls)
     print()
 
-    if result.get("published"):
-        status = "OK"
-    elif result.get("reason") in ("queue_empty", "deferred_by_rate_limit",
-                                  "dry_run_guards_passed"):
-        # 「按频率推迟」是正常的节流，不是异常，不占用人工队列
-        status = "NO_NEW_SIGNAL"
-    else:
-        status = "NEEDS_HUMAN_REVIEW"
+    # 「按频率推迟」是正常节流，不占人工队列 —— 判定规则已抽成纯函数并单测覆盖
+    status = publish_outcome_status(result)
 
     failing = {k: v["failing"] for k, v in health.items() if v["failing"]}
     risks = []

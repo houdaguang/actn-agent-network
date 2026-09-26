@@ -145,6 +145,32 @@ def main() -> int:
     nine_six = datetime(2026, 9, 26, tzinfo=timezone.utc).timestamp()
     close("该记录距 2026-09-26 00:00Z 恰为 30.0 天", (nine_six - t) / 86400, 30.0, tol=0.01)
 
+    # ---------------------------------------------------------------- 6. 报告不变量
+    print("\n[6] 报告必须与事实一致（部分发布也是发布）")
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from daily_loop import publish_outcome_status, summarise_publish_result  # noqa: PLC0415
+
+    partial_case = summarise_publish_result(
+        partial=[{"content_id": "x-001", "published_channels": ["bluesky_owned_account"],
+                  "deferred_channels": ["mastodon_owned_account"],
+                  "urls": ["https://example.invalid/post/1"],
+                  "evidence": ["idempotency key present: bluesky_owned_account:x-001"]}],
+        deferred=[], blocked=[])
+    eq("部分发布必须回报 published（不得为 None）", partial_case.get("published"), "x-001")
+    eq("部分发布必须标记 partial", partial_case.get("partial"), True)
+    eq("部分发布的 RUN_STATUS 必须是 OK", publish_outcome_status(partial_case), "OK")
+    eq("部分发布必须保留下轮要补的渠道",
+       partial_case.get("deferred_channels"), ["mastodon_owned_account"])
+
+    eq("什么都没发（按上限顺延）→ NO_NEW_SIGNAL",
+       publish_outcome_status(summarise_publish_result([], ["c: 额度满"], [])),
+       "NO_NEW_SIGNAL")
+    eq("被守卫拦截（需人工）→ NEEDS_HUMAN_REVIEW",
+       publish_outcome_status(summarise_publish_result([], [], ["c: 命中禁止话术"])),
+       "NEEDS_HUMAN_REVIEW")
+    eq("完整发布（无 partial）→ OK",
+       publish_outcome_status({"published": "y-001", "deferred": [], "blocked": []}), "OK")
+
     print("\n" + "=" * 74)
     if failures:
         print(f"SUMMARY: {checks - len(failures)}/{checks} passed  —— 有 {len(failures)} 项失败")

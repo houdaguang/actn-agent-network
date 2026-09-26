@@ -196,6 +196,7 @@ def step_publish_one() -> dict:
     print(f"  队列 {len(queue)} 项: {[p.name for p in queue]}")
     deferred: list[str] = []
     blocked: list[str] = []
+    partial: list[dict] = []
 
     for spec_path in queue:
         spec = json.loads(spec_path.read_text(encoding="utf-8"))
@@ -268,7 +269,15 @@ def step_publish_one() -> dict:
                 done_ch = [c for c in channels if c not in missing]
                 print(f"    部分发布：已发 {done_ch}，未发 {missing}"
                       "（按全局日上限顺延，内容保留在队列）")
-                deferred.append(f"{content_id}: 部分渠道顺延 {missing}")
+                # ⚠️ 这里**必须**按"已发出内容"回报，不能落进下面的兜底分支。
+                # 曾经把它记成 published=None → RUN_STATUS 报 NO_NEW_SIGNAL、PUBLISHED 为空，
+                # 明明发出去了却报告成什么都没做。这是本系统最不该有的错误类型：
+                # 报告与事实不符。部分发布仍然是发布。
+                partial.append({
+                    "content_id": content_id, "published_channels": done_ch,
+                    "deferred_channels": missing, "urls": urls,
+                    "evidence": [f"idempotency key present: {c}:{content_id}" for c in done_ch],
+                })
                 break
 
             done = ROOT / "content" / "published"
@@ -277,6 +286,7 @@ def step_publish_one() -> dict:
             print(f"    已发布并归档 -> content/published/{spec_path.name}")
             return {"published": content_id, "spec": spec_path.name,
                     "urls": urls, "channels": list(channels),
+                    "published_channels": list(channels),
                     "deferred": deferred, "blocked": blocked}
 
         except DeferredByRateLimit as e:
@@ -288,6 +298,15 @@ def step_publish_one() -> dict:
             print(f"    守卫拦截（需人工检查）: {e}")
             blocked.append(f"{content_id}: {e}")
             continue
+
+    # 部分发布优先于"什么都没做"：确实发出去了，就得如实说发出去了。
+    if partial:
+        p = partial[0]
+        return {"published": p["content_id"], "partial": True,
+                "published_channels": p["published_channels"],
+                "deferred_channels": p["deferred_channels"],
+                "urls": p["urls"], "evidence": p["evidence"],
+                "deferred": deferred, "blocked": blocked}
 
     print("  队列中没有一条通过守卫")
     if deferred and not blocked:
@@ -506,6 +525,9 @@ def main() -> int:
     save_state(signals)
 
     skipped_bits = [result.get("reason") or ""]
+    if result.get("partial"):
+        skipped_bits.append(
+            f"partial: 已发 {result.get('published_channels')} / 顺延 {result.get('deferred_channels')}")
     if result.get("deferred"):
         skipped_bits.append(f"deferred={len(result['deferred'])}（正常节流，下轮再发）")
     if result.get("blocked"):
@@ -513,7 +535,18 @@ def main() -> int:
 
     print("=" * 74)
     print(f"RUN_STATUS: {status}")
-    print(f"PUBLISHED: {[result.get('published')] if result.get('published') else []}")
+    if result.get("published"):
+        print(f"PUBLISHED: {result['published']}"
+              + (f"（部分发布，渠道 {result.get('published_channels')}）"
+                 if result.get("partial") else ""))
+        if result.get("urls"):
+            print(f"PUBLISHED_URLS: {result['urls']}")
+        if result.get("evidence"):
+            print(f"EVIDENCE: {result['evidence']}")
+        if result.get("recovered_from_partial"):
+            print("NOTE: 本轮未新发——该内容所有渠道此前均已发布，本次仅补做归档。")
+    else:
+        print("PUBLISHED: []")
     print(f"SKIPPED: {'; '.join(b for b in skipped_bits if b)}")
     print(f"RISKS: {json.dumps(risks, ensure_ascii=False)}")
     print(f"FUNNEL: 站点侧埋点不可用（禁止改代码）；替代口径 "

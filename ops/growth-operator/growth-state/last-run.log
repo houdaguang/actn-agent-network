@@ -1,5 +1,5 @@
 ==========================================================================
-ACTN Daily Safe Growth Loop — 2026-09-26T01:27:13+0000
+ACTN Daily Safe Growth Loop — 2026-09-26T18:01:03+0000
 时区 Asia/Shanghai   environment production
 ==========================================================================
 [1] kill switch: paused=False
@@ -9,7 +9,7 @@ ACTN Daily Safe Growth Loop — 2026-09-26T01:27:13+0000
   global  https://actn.bluestarinstitute.club  OK
 
 [3] 信号刷新（只读）
-  仓库最新提交 : {'sha': '11c8ee67be1e', 'date': '2026-09-25T11:14:19Z'}
+  仓库最新提交 : {'sha': 'a66198e339bd', 'date': '2026-09-26T18:00:26Z'}
   未结 issue   : 0
   最新 Release : {'tag': 'v1.0.1', 'at': '2026-09-24T23:08:43Z'}
   注册表版本   : {'version': '2026.09.25', 'commit': '966c7963'}  安装量=16
@@ -25,14 +25,22 @@ ACTN Daily Safe Growth Loop — 2026-09-26T01:27:13+0000
   队列 1 项: ['en-actn-skill-registry-001.json']
 
   尝试 en-actn-skill-registry-001
-    按频率上限推迟至下一轮: 已达全局每日内容分发上限 1（今日已分发 2 条）。内容留在队列，交由下一个每日循环发布；不得就地放宽上限。
+    本次额度内渠道 ['bluesky_owned_account']；按上限顺延 ['mastodon_owned_account']
+    守卫 PASS bluesky_owned_account  内容日用量 0/1
+      已发布 -> https://bsky.app/profile/actn-agent-network.bsky.social/post/3mwgujdcp5723
+    
+    ==========================================================================
+    完成 1 个渠道。账本: growth-state/content-ledger.jsonl
+      bluesky_owned_account      https://bsky.app/profile/actn-agent-network.bsky.social/post/3mwgujdcp5723
+    ==========================================================================
+    部分发布：已发 ['bluesky_owned_account']，未发 ['mastodon_owned_account']（按全局日上限顺延，内容保留在队列）
   队列中没有一条通过守卫
 
 [4.5] 技能分发端到端验证（隔离作用域）
-  上次运行 2026-09-25T09:13:59+0800（0.7 天前）→ 未到期，跳过
+  上次运行 2026-09-25T09:13:59+0800（1.7 天前）→ 未到期，跳过
 
 [4.7] API 契约漂移巡检（只读，周频次）
-  上次运行 2026-09-25T19:01:12+0800（0.3 天前）→ 未到期，跳过
+  上次运行 2026-09-25T19:01:12+0800（1.3 天前）→ 未到期，跳过
 
 [5] 搜索提交
   未授权任何搜索提交接口（GSC/Bing/IndexNow/百度 均为 false）→ 跳过

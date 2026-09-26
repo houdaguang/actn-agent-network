@@ -1,0 +1,15 @@
+{
+  "content_id": "en-actn-skill-update-002",
+  "_note": "单渠道条目（Mastodon）。角度与 001「一行命令安装」不同：讲「装了会过期，而 doctor 检测不出来」这个真实易踩的坑，链接指向仓库 FAQ（docs/faq.md）——该 URL 此前未使用过，不撞 30 天复用窗口。原 002 计划沿用 Release 页 URL，但该 URL 已随 001 的 Bluesky 发布进入 30 天窗口，故改为全新 URL + 不同角度，而不是复用旧链接。文本 470 字符（≤500）。",
+  "urls": [
+    "https://github.com/houdaguang/actn-agent-network/blob/main/docs/faq.md"
+  ],
+  "accounts": {
+    "mastodon_owned_account": "houdaguang@mastodon.social"
+  },
+  "channels": {
+    "mastodon_owned_account": {
+      "text": "One thing worth knowing before you install the ACTN agent skill.\n\nnpx skhub doctor is an offline check: it compares your files against your own local manifest. It never asks the registry whether something newer exists. An install two versions behind can report clean and still be stale.\n\nTo find out whether anything newer exists:\n\nnpx skhub update\n\nFAQ: https://github.com/houdaguang/actn-agent-network/blob/main/docs/faq.md\n\nOfficial ACTN account; posts are automated."
+    }
+  }
+}

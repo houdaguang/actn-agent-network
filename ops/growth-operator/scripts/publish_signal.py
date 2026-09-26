@@ -14,10 +14,13 @@
 }
 
 设计要点：
-- 先在本地把**所有**渠道过一遍守卫，任一不过则整体不发布（避免"发了一半"）。
+- 先在**批次层**按全局日内容上限扣减额度，只对额度内的渠道过守卫并发不出去；
+  额度外的渠道顺延，**不得**一次性整批放出（那会让日上限形同虚设）。
 - 每个渠道独立幂等键：<channel>:<content_id>，重复运行不会重复发布。
+  「部分发布」因此是安全且可恢复的：已发的渠道下次自动跳过，未发的继续。
 - Mastodon 的自动化披露采用「资料声明 或 每条帖子自带」双模式（见 check_disclosure）。
 - 只用官方 API；不做浏览器模拟；失败即停，不重试。
+- 退出码：0=已按额度发布；3=额度为 0，本次未发布任何渠道（属正常顺延）。
 """
 from __future__ import annotations
 
@@ -209,13 +212,22 @@ def main() -> None:
 
     guard = Guard()
 
-    # ---- 阶段 1：全部渠道先过守卫，任一不过则整体不发 ----
-    log("\n[1] 前置守卫（全部通过才进入发布）")
+    # ---- 阶段 1：先在批次层扣减全局日内容额度，再逐渠道过守卫 ----
+    # 「全有或全无」的写法看着更安全，实际会把全局日上限撕开一个口子：
+    # 逐个渠道 preflight 时账本尚未写入，每个渠道都看到「今日 0 条」而放行，
+    # 于是一条含 2 个内容渠道的内容会被整批放出 2 条。必须先算额度、再决定发谁。
+    log("\n[1] 前置守卫（通过才进入发布）")
     guard.check_kill_switch()
     log("  kill switch          : 未开启")
 
+    allow, deferred = guard.select_within_content_budget(list(channels))
+    if deferred:
+        log(f"  全局日内容上限       : 剩余额度 {guard.content_budget_remaining()}，"
+            f"本次顺延 {deferred}（留待下一次运行；不放宽上限）")
+
     plans: list[dict] = []
-    for channel, payload in channels.items():
+    for channel in allow:
+        payload = channels[channel]
         text = payload["text"]
         expect_account = (spec.get("accounts") or {}).get(channel)
         if not expect_account:
@@ -223,9 +235,16 @@ def main() -> None:
             expect_account = ch.get("handle") or ch.get("owner")
         limits = guard.preflight(channel=channel, account=expect_account, text=text,
                                  urls=urls, idem_key=f"{channel}:{content_id}")
-        log(f"  {channel:<26} PASS  日{limits['channel_day']}/周{limits['channel_week']}"
-            f"  全局今日{limits['global_day']}")
+        log(f"  {channel:<26} PASS  本渠道日{limits['channel_day']}"
+            f"/周{limits['channel_week']}  全局今日内容"
+            f"{limits['content_day']}/{limits['limit_day']}")
         plans.append({"channel": channel, "account": expect_account, "text": text})
+
+    if not plans:
+        # 防御性分支：正常调用路径下 daily_loop 已先算过额度，不会走到这里。
+        # 独立调用（或额度刚被别的进程吃掉）时，明确按「顺延」退出，而不是发布。
+        log("\n[STOP] 全局每日内容分发上限已达，本次不发布任何渠道。")
+        sys.exit(3)
 
     # 长度上限
     if "bluesky_owned_account" in channels:

@@ -240,15 +240,16 @@ def main() -> int:
 
 
 def _ts(record: dict) -> float:
+    """复用 growth_core 的时区正确解析。
+
+    此前这里有一份独立实现，同样犯了 `mktime(strptime(..., '%z'))` 的错——
+    两处各写一遍，两处都错。改为单一实现，避免再分叉。
+    """
+    from growth_core import _parse_ts  # noqa: PLC0415
     for k in ("published_at", "logged_at", "created_at"):
         v = record.get(k)
-        if not v:
-            continue
-        for fmt in ("%Y-%m-%dT%H:%M:%S%z", "%Y-%m-%dT%H:%M:%SZ", "%Y-%m-%dT%H:%M:%S"):
-            try:
-                return time.mktime(time.strptime(v, fmt))
-            except ValueError:
-                continue
+        if v:
+            return _parse_ts(v)
     return 0.0
 
 

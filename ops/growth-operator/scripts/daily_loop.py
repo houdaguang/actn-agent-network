@@ -28,8 +28,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 from growth_core import (CONTENT_CHANNELS, DeferredByRateLimit, Guard,  # noqa: E402
-                         GrowthGuardError, load_config, load_secrets, log_run,
-                         now_iso, read_jsonl)
+                         GrowthGuardError, load_config, load_idem, load_secrets,
+                         log_run, now_iso, parse_ts, read_jsonl)
 
 DRY = "--dry-run" in sys.argv
 CFG = load_config()
@@ -204,16 +204,40 @@ def step_publish_one() -> dict:
         try:
             channels = spec.get("channels") or {}
             urls = spec.get("urls") or []
+            # 已发过的渠道不再重复消耗额度。
+            # 内容从「部分发布」状态恢复时必须只补未发的渠道：否则已发渠道会被
+            # 幂等守卫判成「重复发布」→ 误报 NEEDS_HUMAN_REVIEW，而真实原因只是顺延。
+            published_keys = (load_idem().get("published_keys") or {})
+            todo = [c for c in channels if f"{c}:{content_id}" not in published_keys]
+            if not todo:
+                print("    该内容的所有渠道此前均已发布 → 直接归档，不再消耗额度")
+                done = ROOT / "content" / "published"
+                done.mkdir(parents=True, exist_ok=True)
+                shutil.move(str(spec_path), str(done / spec_path.name))
+                return {"published": content_id, "spec": spec_path.name, "urls": urls,
+                        "channels": list(channels), "recovered_from_partial": True,
+                        "deferred": deferred, "blocked": blocked}
+
+            # 批次层扣减全局日内容额度：逐渠道 preflight 时账本还没写入，
+            # 每个渠道都会看到「今日 0 条」而放行 —— 必须先算额度再决定发谁。
+            allow, skipped = guard.select_within_content_budget(todo)
+            if not allow:
+                raise DeferredByRateLimit(
+                    f"已达全局每日内容分发上限 "
+                    f"{guard.cfg['global']['max_external_posts_per_day']}。"
+                    "内容留在队列，交由下一个每日循环发布；不得就地放宽上限。")
+            if skipped:
+                print(f"    本次额度内渠道 {allow}；按上限顺延 {skipped}")
             plans = []
-            for channel, payload in channels.items():
+            for channel in allow:
                 account = (spec.get("accounts") or {}).get(channel)
                 if not account:
                     ch = guard.check_channel_enabled(channel)
                     account = ch.get("handle") or ch.get("owner")
                 limits = guard.preflight(channel=channel, account=account,
-                                         text=payload["text"], urls=urls,
+                                         text=channels[channel]["text"], urls=urls,
                                          idem_key=f"{channel}:{content_id}")
-                plans.append((channel, account, payload["text"], limits))
+                plans.append((channel, account, channels[channel]["text"], limits))
                 print(f"    守卫 PASS {channel}  内容日用量 {limits['content_day']}/{limits['limit_day']}")
 
             if DRY:
@@ -226,10 +250,26 @@ def step_publish_one() -> dict:
                 [sys.executable, str(ROOT / "scripts" / "publish_signal.py"), str(spec_path)],
                 capture_output=True, text=True, cwd=ROOT)
             print("    " + "\n    ".join((r.stdout or "").strip().splitlines()[-6:]))
+            if r.returncode == 3:
+                # 发布器明确报告「额度为 0，未发任何渠道」= 正常顺延，不是故障
+                print("    发布器报告额度已满，本次未发布（顺延）")
+                deferred.append(f"{content_id}: 全局日内容额度已满，顺延")
+                continue
             if r.returncode != 0:
                 print(f"    发布失败 rc={r.returncode}，进入下一个队列项")
                 blocked.append(f"{content_id}: publish rc={r.returncode}")
                 continue
+
+            # 完整性判定：只有该内容的**所有**渠道都留下幂等记录，才算完整发布。
+            # 部分发布（额度只够一部分渠道）时不得归档，否则剩余渠道永远不会再发。
+            published_keys = (load_idem().get("published_keys") or {})
+            missing = [ch for ch in channels if f"{ch}:{content_id}" not in published_keys]
+            if missing:
+                done_ch = [c for c in channels if c not in missing]
+                print(f"    部分发布：已发 {done_ch}，未发 {missing}"
+                      "（按全局日上限顺延，内容保留在队列）")
+                deferred.append(f"{content_id}: 部分渠道顺延 {missing}")
+                break
 
             done = ROOT / "content" / "published"
             done.mkdir(parents=True, exist_ok=True)
@@ -273,7 +313,7 @@ def step_skill_e2e(state: dict) -> dict:
     due = True
     if last:
         try:
-            age_days = (time.time() - time.mktime(time.strptime(last, "%Y-%m-%dT%H:%M:%S%z"))) / 86400
+            age_days = (time.time() - parse_ts(last)) / 86400
             due = age_days >= 7
             print(f"  上次运行 {last}（{age_days:.1f} 天前）→ {'到期，执行' if due else '未到期，跳过'}")
         except Exception:  # noqa: BLE001
@@ -337,7 +377,7 @@ def step_contract_drift(state: dict) -> dict:
     due = True
     if last:
         try:
-            age = (time.time() - time.mktime(time.strptime(last, "%Y-%m-%dT%H:%M:%S%z"))) / 86400
+            age = (time.time() - parse_ts(last)) / 86400
             due = age >= 7
             print(f"  上次运行 {last}（{age:.1f} 天前）→ {'到期，执行' if due else '未到期，跳过'}")
         except Exception:  # noqa: BLE001

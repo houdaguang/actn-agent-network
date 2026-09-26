@@ -327,7 +327,8 @@ class Guard:
         content = [r for r in published if r.get("channel") in CONTENT_CHANNELS]
         day_ch = recent([r for r in published if r.get("channel") == channel], 86400)
         week_ch = recent([r for r in published if r.get("channel") == channel], 7 * 86400)
-        day_content = recent(content, 86400)
+        # 与 content_budget_remaining() 共用同一口径，避免两处实现各自漂移
+        day_content_n = self._content_day_used()
         week_content = recent(content, 7 * 86400)
 
         max_day = int(self.cfg["global"]["max_external_posts_per_day"])
@@ -336,9 +337,9 @@ class Guard:
         max_week_ch = int(ch.get("max_posts_per_week", default_week))
 
         if channel in CONTENT_CHANNELS:
-            if len(day_content) >= max_day:
+            if day_content_n >= max_day:
                 raise DeferredByRateLimit(
-                    f"已达全局每日内容分发上限 {max_day}（今日已分发 {len(day_content)} 条）。"
+                    f"已达全局每日内容分发上限 {max_day}（今日已分发 {day_content_n} 条）。"
                     "内容留在队列，交由下一个每日循环发布；不得就地放宽上限。")
             if len(day_ch) >= max_day:
                 raise DeferredByRateLimit(f"渠道 {channel} 已达日上限 {max_day}。")
@@ -349,11 +350,53 @@ class Guard:
         return {
             "channel_day": len(day_ch),
             "channel_week": len(week_ch),
-            "content_day": len(day_content),
+            "content_day": day_content_n,
             "content_week": len(week_content),
             "limit_day": max_day,
             "limit_week_channel": max_week_ch,
         }
+
+    # -- 批次总额度 --------------------------------------------------------
+    def _content_day_used(self) -> int:
+        """过去 24h 内已发布的「面向受众内容分发」条数（全局日上限口径）。"""
+        led = read_jsonl("growth-state/content-ledger.jsonl")
+        now = time.time()
+        return len([r for r in led
+                    if r.get("status") == "published"
+                    and r.get("channel") in CONTENT_CHANNELS
+                    and now - _ts(r) < 86400])
+
+    def content_budget_remaining(self) -> int:
+        """全局日内容上限还剩多少额度。"""
+        return max(0, int(self.cfg["global"]["max_external_posts_per_day"])
+                   - self._content_day_used())
+
+    def select_within_content_budget(self, channels: list[str]) -> tuple[list[str], list[str]]:
+        """把一批渠道拆成 (本次可发, 因全局日上限顺延)。
+
+        为什么必须在**批次层**扣减额度：`preflight` 是逐渠道判断的，而此时账本里
+        **还没有**本次要发的记录，于是批次里每个渠道都会看到「今日已发 0 条」而放行。
+        实测后果：一条同时含 bluesky + mastodon 的内容，在日上限 = 1 的配置下会被
+        **整批放出 2 条**——全局日上限形同虚设。证据：2026-09-25T06:53:20 与
+        06:53:24 相差 4 秒的两条发布，就是同一条内容双渠道一次性放出的结果。
+
+        只有在批次层扣减，日上限才是真的硬上限。这是**收紧**而非放宽：
+        不可发的渠道被顺延到下一次运行，绝不绕过上限。
+
+        只对 CONTENT_CHANNELS 扣减；资产渠道（注册表 / Release / 自有仓库）属资产发布，
+        不受全局日内容上限约束。返回顺序即发布顺序，保证可复现。
+        """
+        budget = self.content_budget_remaining()
+        allow: list[str] = []
+        deferred: list[str] = []
+        for ch in channels:
+            if ch in CONTENT_CHANNELS:
+                if budget <= 0:
+                    deferred.append(ch)
+                    continue
+                budget -= 1
+            allow.append(ch)
+        return allow, deferred
 
     # -- 幂等与去重 --------------------------------------------------------
     def check_idempotency(self, key: str) -> None:
@@ -431,17 +474,58 @@ def _ts(record: dict) -> float:
 
 
 def _parse_ts(s: str) -> float:
+    """把时间戳字符串解析为**绝对** epoch 秒。
+
+    ⚠️ 这里曾经用一个看似等价、实则错误的写法：
+        time.mktime(time.strptime(s, "%Y-%m-%dT%H:%M:%S%z"))
+    `mktime` 会**忽略** `strptime` 解析出的时区偏移，把墙上时间当作宿主机本地时间处理。
+    后果：
+      1) 云端 runner 是 UTC，带 `+0800` 的记录会被提前 8 小时；
+      2) 本机是 +0800，带 `Z`/`+0000` 的记录又会被推迟 8 小时；
+      3) 同一份账本在不同机器上算出不同的窗口 —— 守卫行为不可复现。
+    实测代价：2026-09-26 的云端排程把 26.6 小时前的发布误判为"今日已发"，
+    于是把一条本该发布的内容错误推迟，**第一次全自动发布被静默吃掉**。
+
+    正确做法：用 datetime 解析并取 .timestamp()，它会正确处理 %z。
+    无偏移的裸时间戳按 UTC 处理（我们的写入方始终带偏移，裸值是历史遗留）。
+    """
+    from datetime import datetime, timezone
+
     s = s.strip()
-    for fmt in ("%Y-%m-%dT%H:%M:%S%z", "%Y-%m-%dT%H:%M:%SZ", "%Y-%m-%dT%H:%M:%S",
-                "%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
-        try:
-            return time.mktime(time.strptime(s, fmt))
-        except ValueError:
-            continue
+    if s.endswith("Z"):
+        s = s[:-1] + "+0000"
+
+    # 补齐 "+0800" -> "+08:00"，兼容各类 ISO 8601 变体
+    m = re.search(r"([+-]\d{2})(\d{2})$", s)
+    if m:
+        s = s[: m.start()] + f"{m.group(1)}:{m.group(2)}"
+
     try:
-        return time.mktime(time.strptime(s[:19], "%Y-%m-%dT%H:%M:%S"))
-    except Exception:  # noqa: BLE001
-        return 0.0
+        dt = datetime.fromisoformat(s)
+    except ValueError:
+        for fmt in ("%Y-%m-%dT%H:%M:%S%z", "%Y-%m-%dT%H:%M:%S",
+                    "%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
+            try:
+                dt = datetime.strptime(s, fmt)
+                break
+            except ValueError:
+                continue
+        else:
+            return 0.0
+
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.timestamp()
+
+
+def parse_ts(s: str) -> float:
+    """`_parse_ts` 的公开别名。
+
+    存在的理由：`daily_loop` 的「到期判断」原本各自写了一遍
+    `time.mktime(time.strptime(x, "%Y-%m-%dT%H:%M:%S%z"))`，正是上面这个被否掉的写法。
+    暴露一个公开入口，让时区解析只有一处实现。
+    """
+    return _parse_ts(s)
 
 
 def record_publication(*, channel: str, account: str, content_id: str, text: str,

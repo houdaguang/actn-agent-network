@@ -1,5 +1,5 @@
 ==========================================================================
-ACTN Daily Safe Growth Loop — 2026-09-26T18:18:06+0000
+ACTN Daily Safe Growth Loop — 2026-09-26T18:28:48+0000
 时区 Asia/Shanghai   environment production
 ==========================================================================
 [1] kill switch: paused=False
@@ -9,7 +9,7 @@ ACTN Daily Safe Growth Loop — 2026-09-26T18:18:06+0000
   global  https://actn.bluestarinstitute.club  OK
 
 [3] 信号刷新（只读）
-  仓库最新提交 : {'sha': '4a36cc32860e', 'date': '2026-09-26T18:16:48Z'}
+  仓库最新提交 : {'sha': '121760a4f1c9', 'date': '2026-09-26T18:27:04Z'}
   未结 issue   : 0
   最新 Release : {'tag': 'v1.0.1', 'at': '2026-09-24T23:08:43Z'}
   注册表版本   : {'version': '2026.09.25', 'commit': '966c7963'}  安装量=16
@@ -19,14 +19,13 @@ ACTN Daily Safe Growth Loop — 2026-09-26T18:18:06+0000
 [4.6] 公开资产变更 + 队列空置监控
 [watch] 公开资产变更监控（只读）
 [watch] 队列空置检查
-[watch] 完成：跟踪 10 项，变更 0 项，队列 1 条（空置 0 天）
+[watch] 完成：跟踪 10 项，变更 0 项，队列 2 条（空置 0 天）
 
 [4] 队列处理（至多一条）
-  队列 1 项: ['en-actn-skill-registry-001.json']
+  队列 2 项: ['en-actn-skill-registry-001.json', 'en-actn-skill-update-002.json']
 
   尝试 en-actn-skill-registry-001
-    按频率上限推迟至下一轮: 已达全局每日内容分发上限 1。内容留在队列，交由下一个每日循环发布；不得就地放宽上限。
-  队列中没有一条通过守卫
+    该内容的所有渠道此前均已发布 → 直接归档，不再消耗额度
 
 [4.5] 技能分发端到端验证（隔离作用域）
   上次运行 2026-09-25T09:13:59+0800（1.7 天前）→ 未到期，跳过
@@ -38,9 +37,11 @@ ACTN Daily Safe Growth Loop — 2026-09-26T18:18:06+0000
   未授权任何搜索提交接口（GSC/Bing/IndexNow/百度 均为 false）→ 跳过
 
 ==========================================================================
-RUN_STATUS: NO_NEW_SIGNAL
-PUBLISHED: []
-SKIPPED: deferred_by_rate_limit; deferred=1（正常节流，下轮再发）
+RUN_STATUS: OK
+PUBLISHED: en-actn-skill-registry-001
+PUBLISHED_URLS: ['https://agentskillhub.dev/u/houdaguang/sk/actn-network']
+NOTE: 本轮未新发——该内容所有渠道此前均已发布，本次仅补做归档。
+SKIPPED: 
 RISKS: []
 FUNNEL: 站点侧埋点不可用（禁止改代码）；替代口径 github_issues=0 registry_installs=16
 NEXT_SAFE_ACTION: 下一个每日循环继续处理队列

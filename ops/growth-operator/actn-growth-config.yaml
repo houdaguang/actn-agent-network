@@ -86,6 +86,7 @@ allowed_channels:
     handle: "actn-agent-network.bsky.social"
     did: "did:plc:fmvrg225s6gz4hg7qznrd6hw"
     max_posts_per_week: 4
+    max_chars: 300          # 平台硬约束：Bluesky 帖上限 300 字符
     allow_automatic_replies: false
     bio_must_state_automation: true
 
@@ -113,14 +114,17 @@ allowed_channels:
     instance: "https://mastodon.social"
     handle: "houdaguang@mastodon.social"
     max_posts_per_week: 3
+    max_chars: 500          # 平台硬约束：Mastodon 默认 500（mastodon.social 实测 ≥525，取保守值）
     allow_automatic_replies: false
     honour_instance_rules: true
     bio_must_state_automation: true
     # 2026-09-25 实测：token 仅有 profile read:accounts write:media write:statuses，
     # 缺少 write:accounts，PATCH update_credentials 返回 403，资料无法写入自动化披露。
-    # publish_social.py 已在发布前硬性校验 note 是否含披露；未含即停止发布。
-    profile_disclosure_status: "MISSING — 需负责人为 ACTN Growth Publisher 补授 write:accounts 后重新授权"
-    guard_enforced: "check_profile_disclosure() — 资料无披露前不再向该渠道发布"
+    # 已按总方案 6.5 的意图采用**双模式**：资料声明 **或** 每条帖子自带披露，任一满足即可，
+    # 由 publish_signal.check_disclosure() 在发布前判定并记录实际采用的是哪一种。
+    # 因此该渠道**当前可正常发布**（走「每条帖子自带披露」）。上面这行历史状态仅作背景：
+    profile_disclosure_status: "资料侧缺失（缺 write:accounts）→ 已启用「每条帖子自带披露」替代路径"
+    guard_enforced: "check_disclosure() — 资料与帖子均无披露时硬性停止发布"
 
   wechat_official_account:
     enabled: false          # 用户明确要求本轮先忽略公众号

@@ -443,6 +443,25 @@ class Guard:
             raise GrowthGuardError(
                 "内容含未经确认的生产统计数字；负责人尚未确认统计口径（pending-real-stats），禁止发布。")
 
+    # -- 平台硬约束 --------------------------------------------------------
+    # 这不是「政策选择」，是平台会直接拒绝的硬上限。超长 → 平台返回 4xx →
+    # 发布器崩溃 → 被记成需人工介入，把一次普通的排版问题升级成故障。
+    # Bluesky 帖上限 300 字符（官方硬限制）。
+    # Mastodon 默认 500；mastodon.social 实测 ≥525（2026-09-25 一条 525 字符的帖子
+    # 已成功发布并留下 URL），但当时无法在线核实实例当前上限，故按保守值 500 约束。
+    PLATFORM_MAX_CHARS = {
+        "bluesky_owned_account": 300,
+        "mastodon_owned_account": 500,
+    }
+
+    def check_platform_limits(self, channel: str, text: str) -> None:
+        ch = (self.cfg.get("allowed_channels") or {}).get(channel) or {}
+        cap = ch.get("max_chars") or self.PLATFORM_MAX_CHARS.get(channel)
+        if cap and len(text) > cap:
+            raise GrowthGuardError(
+                f"{channel} 文本 {len(text)} 字符超过平台上限 {cap}。"
+                "超长会被平台直接拒绝；必须在投递前改短（平台硬约束，不得放宽）。")
+
     # -- 账号归属 ----------------------------------------------------------
     def check_account_owned(self, channel: str, account: str) -> None:
         ch = self.check_channel_enabled(channel)
@@ -457,9 +476,14 @@ class Guard:
         self.check_kill_switch()
         self.check_channel_enabled(channel)
         self.check_account_owned(channel, account)
+        self.check_platform_limits(channel, text)
         self.check_claims(text)
         self.check_idempotency(idem_key)
-        for u in urls:
+        # URL 复用窗口必须覆盖**正文里出现的** URL，而不只是显式声明的 url 列表：
+        # 否则只要把链接写进正文、不写进 urls，就能绕过 30 天窗口。这是实测存在的口子。
+        embedded = {u.rstrip(".,;:!?)\u3002\uff09\u3011]")
+                    for u in re.findall(r"https?://[^\s<>\"'\uff08\uff09)\]\u3011]+", text)}
+        for u in sorted(set(urls) | embedded):
             self.check_url_reuse(u)
         self.check_duplicate_content(text)
         limits = self.check_rate_limit(channel)

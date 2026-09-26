@@ -171,6 +171,16 @@ def main() -> int:
     eq("完整发布（无 partial）→ OK",
        publish_outcome_status({"published": "y-001", "deferred": [], "blocked": []}), "OK")
 
+    # 归档清理不是分发：不得报成 OK，也不得报成故障
+    arch = summarise_publish_result([], [], [], ["z-001: 所有渠道此前均已发布，仅归档"])
+    eq("只归档不新发 → published 必须为 None", arch.get("published"), None)
+    eq("只归档不新发 → reason 为 archived_already_published",
+       arch.get("reason"), "archived_already_published")
+    eq("只归档不新发 → RUN_STATUS 为 NO_NEW_SIGNAL",
+       publish_outcome_status(arch), "NO_NEW_SIGNAL")
+    eq("归档记录必须保留以供审计", arch.get("archived"),
+       ["z-001: 所有渠道此前均已发布，仅归档"])
+
     print("\n" + "=" * 74)
     if failures:
         print(f"SUMMARY: {checks - len(failures)}/{checks} passed  —— 有 {len(failures)} 项失败")

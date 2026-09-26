@@ -197,6 +197,7 @@ def step_publish_one() -> dict:
     deferred: list[str] = []
     blocked: list[str] = []
     partial: list[dict] = []
+    archived: list[str] = []
 
     for spec_path in queue:
         spec = json.loads(spec_path.read_text(encoding="utf-8"))
@@ -211,13 +212,15 @@ def step_publish_one() -> dict:
             published_keys = (load_idem().get("published_keys") or {})
             todo = [c for c in channels if f"{c}:{content_id}" not in published_keys]
             if not todo:
-                print("    该内容的所有渠道此前均已发布 → 直接归档，不再消耗额度")
+                print("    该内容的所有渠道此前均已发布 → 归档（不消耗额度）")
                 done = ROOT / "content" / "published"
                 done.mkdir(parents=True, exist_ok=True)
                 shutil.move(str(spec_path), str(done / spec_path.name))
-                return {"published": content_id, "spec": spec_path.name, "urls": urls,
-                        "channels": list(channels), "recovered_from_partial": True,
-                        "deferred": deferred, "blocked": blocked}
+                # ⚠️ 这里必须 continue，不能 return。
+                # 曾经用 return：一条"已发完待归档"的陈旧项一旦排在队首，
+                # 后面的队列项就**永远不会被尝试**——静默堵死整条队列。
+                archived.append(f"{content_id}: 所有渠道此前均已发布，仅归档")
+                continue
 
             # 批次层扣减全局日内容额度：逐渠道 preflight 时账本还没写入，
             # 每个渠道都会看到「今日 0 条」而放行 —— 必须先算额度再决定发谁。
@@ -300,7 +303,7 @@ def step_publish_one() -> dict:
             continue
 
     # 部分发布优先于"什么都没做"：确实发出去了，就得如实说发出去了。
-    return summarise_publish_result(partial, deferred, blocked)
+    return summarise_publish_result(partial, deferred, blocked, archived)
 
 
 # --------------------------------------------------------------------------- 4.5 技能分发端到端验证
@@ -430,37 +433,46 @@ def step_search_submission(new_urls: list[str]) -> dict:
 
 
 def summarise_publish_result(partial: list[dict], deferred: list[str],
-                             blocked: list[str]) -> dict:
-    """把「队列处理」的三种结局归纳成一个结果对象（纯函数，便于测试）。
+                             blocked: list[str], archived: list[str] | None = None) -> dict:
+    """把「队列处理」的结局归纳成一个结果对象（纯函数，便于测试）。
 
     不变量：**报告必须与事实一致**。
-    只要本轮真的发出去了任何渠道，`published` 就不能是 None。
-    曾经部分发布被记成 published=None → RUN_STATUS 报 NO_SIGNAL、PUBLISHED 为空，
-    明明发出去了却报告成什么都没做。这是本系统最不该有的错误类型。
+    1. 只要本轮真的发出去了任何渠道，`published` 就不能是 None。
+    2. 只有归档、没有新发 → 不得报成"发布了"，也不得报成"出错"。
     """
+    archived = archived or []
     if partial:
         p = partial[0]
         return {"published": p["content_id"], "partial": True,
                 "published_channels": p["published_channels"],
                 "deferred_channels": p["deferred_channels"],
                 "urls": p.get("urls") or [], "evidence": p.get("evidence") or [],
-                "deferred": deferred, "blocked": blocked}
+                "archived": archived, "deferred": deferred, "blocked": blocked}
     if deferred and not blocked:
         return {"published": None, "reason": "deferred_by_rate_limit",
-                "deferred": deferred, "blocked": blocked}
+                "archived": archived, "deferred": deferred, "blocked": blocked}
     if blocked:
         return {"published": None, "reason": "no_queue_item_passed_guards",
-                "deferred": deferred, "blocked": blocked}
+                "archived": archived, "deferred": deferred, "blocked": blocked}
+    if archived:
+        # 只做了归档清理，没有新分发 —— 不是发布，也不是故障
+        return {"published": None, "reason": "archived_already_published",
+                "archived": archived, "deferred": deferred, "blocked": blocked}
     return {"published": None, "reason": "queue_empty",
-            "deferred": deferred, "blocked": blocked}
+            "archived": archived, "deferred": deferred, "blocked": blocked}
 
 
 def publish_outcome_status(result: dict) -> str:
-    """把结果对象映射为 RUN_STATUS（纯函数，便于测试）。"""
+    """把结果对象映射为 RUN_STATUS（纯函数，便于测试）。
+
+    OK 的判据是「本轮确实分发了内容」，而不是「脚本没报错」。
+    归档清理属于维护动作，不构成一次分发。
+    """
     if result.get("published"):
         return "OK"          # 含部分发布：确实发出去了，就是 OK
     if result.get("reason") in ("queue_empty", "deferred_by_rate_limit",
-                                "dry_run_guards_passed"):
+                                "dry_run_guards_passed",
+                                "archived_already_published"):
         return "NO_NEW_SIGNAL"
     return "NEEDS_HUMAN_REVIEW"
 

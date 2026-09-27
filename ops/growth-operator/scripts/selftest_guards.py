@@ -181,6 +181,135 @@ def main() -> int:
     eq("归档记录必须保留以供审计", arch.get("archived"),
        ["z-001: 所有渠道此前均已发布，仅归档"])
 
+    # ---------------------------------------------------------------- 7. 状态同步不得说谎
+    # 2026-09-27 实测：sync_cloud_state.py 用 `git pull --rebase` 更新工作副本，再把工作副本
+    # 当作"云端权威"。工作副本一旦处于分叉 / detached HEAD / 残留 .git/rebase-merge，
+    # git 会直接 fatal 且不更新任何文件；而脚本 check=False 且只打印输出第一行
+    # （`From https://github.com/...`），失败与成功外观相同 →
+    # 把**过期约 10 小时**的副本复制进 growth-state/ 并打印"已同步"。
+    # 后果：本地 run-log 5 条 vs 云端 7 条；本地 pending 仍含云端已归档条目；
+    # 报出的"最近一次云端循环"比实际早一个周期。**报告与事实不一致 = 硬故障。**
+    print("\n[7] 状态同步：权威源不可用时必须中止，且必须识别本地滞后")
+    try:
+        import sync_cloud_state as sync  # noqa: PLC0415
+    except ImportError:
+        # 云端运维目录里没有这个本地工具（它是本地起草前的同步器），跳过而不失败。
+        print("  SKIP  本地同步工具不在当前部署集内（仅本地适用）")
+    else:
+        # 7.1 权威源不完整 → 必须抛错，绝不回退本地工作副本
+        raised = False
+        try:
+            sync.require_authority({"run-log.jsonl": b"x"}, ["run-log.jsonl", "content-ledger.jsonl"])
+        except sync.AuthorityUnavailable:
+            raised = True
+        eq("权威源缺文件 → 抛 AuthorityUnavailable（而不是悄悄用本地旧副本）", raised, True)
+        raised = False
+        try:
+            sync.require_authority({}, ["run-log.jsonl"])
+        except sync.AuthorityUnavailable:
+            raised = True
+        eq("权威源为空 → 抛 AuthorityUnavailable", raised, True)
+
+        # 7.2 权威源完整 → 正常放行
+        sync.require_authority({"a": b"1"}, ["a"])
+        eq("权威源完整 → 不抛错", True, True)
+
+        # 7.3 本地滞后必须被识别出来（复现真实数据：5 条 vs 7 条 run-log）
+        d = sync.diff_bytes(
+            {"run-log.jsonl": b"\n".join([b"l%d" % i for i in range(7)])},
+            {"run-log.jsonl": b"\n".join([b"l%d" % i for i in range(5)])},
+        )
+        eq("本地 run-log 滞后 → 判为 mismatch（不得判为 ok）", d["mismatch"], ["run-log.jsonl"])
+        eq("滞后文件不得计入 ok", d["ok"], [])
+        d2 = sync.diff_bytes({"a": b"1", "b": b"2"}, {"a": b"1"})
+        eq("本地缺文件 → 判为 missing", d2["missing"], ["b"])
+        eq("字节相同 → 判为 ok", sync.diff_bytes({"a": b"1"}, {"a": b"1"})["ok"], ["a"])
+
+        # 7.4 队列视图对齐：本地独有的 pending 必须被判为 stale（复现 registry-001 已归档却仍在本地队列）
+        r = sync.reconcile_view(
+            {"pending/en-actn-skill-update-002.json": b"new"},
+            {"pending/en-actn-skill-update-002.json": b"new",
+             "pending/en-actn-skill-registry-001.json": b"old"},
+        )
+        eq("云端已归档、本地仍留的 pending → 判为 stale", r["stale"], ["pending/en-actn-skill-registry-001.json"])
+        eq("stale 名单不得混入 missing", r["missing"], [])
+        r2 = sync.reconcile_view({"pending/x.json": b"1"}, {})
+        eq("云端有、本地无 → 判为 missing（需补入）", r2["missing"], ["pending/x.json"])
+
+        # 7.5 判定闸门：拿不到权威源 → 只能 ABORT，不能宣称成功
+        clean = {"ok": ["a"], "missing": [], "mismatch": []}
+        eq("权威源不可用 → 判定 ABORT", sync.sync_verdict(False, clean), "ABORT")
+        eq("权威源可用且逐字节一致 → 判定 VERIFIED", sync.sync_verdict(True, clean), "VERIFIED")
+        eq("有 mismatch → 判定不得为 VERIFIED",
+           sync.sync_verdict(True, {"ok": [], "missing": [], "mismatch": ["a"]}), "MISMATCH")
+
+    # ---------------------------------------------------------------- 8. 合规扫描不得自伤
+    # 2026-09-27 实测：preflight_repo.py 的"禁用话术"扫描会遍历**整棵树**，包括
+    # ops/growth-operator/actn-growth-config.yaml —— 而那个文件里的 forbidden_phrases
+    # 列表**必然**由禁用话术本身组成。于是该检查永久红着（24/25），
+    # 真正的违规会淹没在噪音里；同时报告与实际不符（"发现违规"而实际是规则定义）。
+    # 与已知的"CI 密钥扫描命中规则定义文件"是同一类自伤。
+    print("\n[8] 内容合规扫描：规则定义列表不得被判为违规（自身不得是噪音源）")
+    try:
+        import preflight_repo as pf  # noqa: PLC0415
+    except ImportError:
+        print("  SKIP  仓库预检工具不在当前部署集内（仅本地适用）")
+    else:
+        import tempfile  # noqa: PLC0415
+
+        RULES = ["guaranteed income", "passive income", "保证赚钱"]
+        with tempfile.TemporaryDirectory() as td:
+            tdp = Path(td)
+
+            # 8.1 规则定义列表：不得命中（含带语种后缀的真实键名 forbidden_phrases_en）
+            (tdp / "cfg.yaml").write_text(
+                "guards:\n"
+                "  forbidden_phrases_en:\n"
+                '    - "guaranteed income"\n'
+                '    - "passive income"\n'
+                "  forbidden_phrases_zh:\n"
+                '    - "保证赚钱"\n',
+                encoding="utf-8")
+            eq("YAML 的 forbidden_phrases_* 列表 → 不得被判为违规",
+               pf.phrase_violations(tdp, RULES), [])
+
+            # 8.2 但非规则字段里的同类话术**必须**照旧命中（证明没有把检查弄瞎）
+            (tdp / "cfg.yaml").write_text(
+                "channels:\n"
+                "  bluesky:\n"
+                '    bio: "Start your passive income today"\n',
+                encoding="utf-8")
+            v = pf.phrase_violations(tdp, RULES)
+            eq("非规则字段里的禁用话术 → 仍须命中", len(v), 1)
+            eq("命中必须指出是哪个文件", v[0].startswith("cfg.yaml") if v else False, True)
+
+            # 8.3 类似但语义仍是规则清单的键（approved-claims.yml 用的 denied_claims）也不得命中
+            (tdp / "cfg.yaml").write_text(
+                "denied_claims:\n"
+                "  - id: deny-earning-promises\n"
+                "    statement: 保证赚钱 / 稳定收益 / 被动收入 等任何收益承诺\n"
+                "    status: denied\n",
+                encoding="utf-8")
+            eq("denied_claims 规则清单 → 不得被判为违规",
+               pf.phrase_violations(tdp, RULES), [])
+
+            # 8.4 非规则字段里的同类话术**必须**照旧命中（证明没有把检查弄瞎）
+            (tdp / "cfg.yaml").write_text(
+                "guards:\n"
+                '  note: "passive income is banned copy"\n',
+                encoding="utf-8")
+            eq("普通字段里的禁用话术 → 仍须命中",
+               len(pf.phrase_violations(tdp, RULES)), 1)
+
+            # 8.5 纯文本文件全量扫描不受影响
+            (tdp / "cfg.yaml").unlink()
+            (tdp / "post.md").write_text("保证赚钱", encoding="utf-8")
+            eq("纯文本里的话术 → 仍须命中",
+               len(pf.phrase_violations(tdp, RULES)), 1)
+            (tdp / "post.md").write_text("保证赚钱，且 guaranteed income", encoding="utf-8")
+            eq("纯文本命中多种话术 → 逐条报出",
+               len(pf.phrase_violations(tdp, RULES)), 2)
+
     print("\n" + "=" * 74)
     if failures:
         print(f"SUMMARY: {checks - len(failures)}/{checks} passed  —— 有 {len(failures)} 项失败")

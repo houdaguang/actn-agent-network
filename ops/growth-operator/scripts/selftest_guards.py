@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import sys
+import tempfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -243,6 +244,88 @@ def main() -> int:
         eq("有 mismatch → 判定不得为 VERIFIED",
            sync.sync_verdict(True, {"ok": [], "missing": [], "mismatch": ["a"]}), "MISMATCH")
 
+    # [9] 空目录 ≠ 权威源不可用（2026-09-28 真实故障，勿回退）
+    # 队列被发空后 content/pending/ 成了空目录；git 不跟踪空目录 ⇒ Contents API 返回 404。
+    # 原实现把这个 404 当致命错误直接 abort，**连备选源 git-fetch-blob 都不试**，
+    # 于是 09-28 云端明明跑成功（RUN_STATUS: OK，已发布 en-actn-skill-update-002），
+    # 本地却永远同步不到：run-log 停在 15357B（云端 17585B）、pending 仍留着已归档条目。
+    # 而 404 在"同步失败"与"这一轮真的什么都没剩"之间不可区分 ⇒ 必须交给备选源裁决。
+    print("\n[9] 状态同步：空目录（HTTP 404）必须回退到备选权威源，不得直接中止")
+    try:
+        import sync_cloud_state as sync  # noqa: PLC0415
+    except ImportError:
+        print("  SKIP  本地同步工具不在当前部署集内（仅本地适用）")
+    else:
+        eq("空目录/404 属于可降级错误，不是权威源不可用",
+           sync.is_degradable_authority_error(sync.urllib.error.HTTPError(
+               "url", 404, "Not Found", {}, None)), True)
+        eq("目录缺失（404）同样可降级",
+           sync.is_degradable_authority_error(sync.urllib.error.HTTPError(
+               "url", 404, "Not Found", {}, None)), True)
+        eq("403 也按目录级问题降级（走备选源复核）",
+           sync.is_degradable_authority_error(sync.urllib.error.HTTPError(
+               "url", 403, "rate limited", {}, None)), True)
+        eq("401 属凭据问题，不得降级（必须响亮失败）",
+           sync.is_degradable_authority_error(sync.urllib.error.HTTPError(
+               "url", 401, "Unauthorized", {}, None)), False)
+        eq("网络类错误不得降级",
+           sync.is_degradable_authority_error(OSError("connection reset")), False)
+
+        # 空目录裁决：权威源说"队列是空的"，而本地还剩旧条目 → 必须按远端对齐
+        auth = {"ops/growth-operator/growth-state/run-log.jsonl": b"l1\nl2\n"}
+        lp = sync.local_path_for("ops/growth-operator/growth-state/run-log.jsonl")
+        eq("权威路径 → 本地落点映射保持稳定",
+           lp is not None and lp.name == "run-log.jsonl" and lp.parent.name == "growth-state", True)
+        eq("非权威路径 → 不给落点（防止把任意路径写进本地）",
+           sync.local_path_for("README.md"), None)
+        rv = sync.reconcile_view(auth, {"ops/growth-operator/growth-state/run-log.jsonl": b"l1\n"})
+        eq("本地滞后于权威 → 不得判为 stale（stale 只表示本地独有）", rv["stale"], [])
+        eq("本地滞后于权威 → 判为 changed", rv["changed"], ["ops/growth-operator/growth-state/run-log.jsonl"])
+
+    # [10] 字节码缓存不得成为内容合规的噪音源（2026-09-28 真实故障）
+    # 自检脚本的断言文本里必然包含禁用话术（它就是用来验证话术能被检出的），
+    # 运行一次后 `__pycache__/*.pyc` 把同样的字节编进去 → 扫描器把缓存当"违规内容" →
+    # preflight 内容合规永久红（24/25）。与 09-27 的 YAML 规则清单自伤同一类。
+    # 缓存是**构建产物**，不是可发布内容，必须跳过。
+    print("\n[10] 内容合规：字节码缓存（.pyc）不得被判为违规内容")
+    import preflight_repo as pf  # noqa: PLC0415
+    eq("__pycache__ 目录属构建产物 → 跳过扫描",
+       pf.is_build_artifact(Path("ops/x/__pycache__/m.cpython-313.pyc")), True)
+    eq(".pyc 后缀 → 跳过扫描",
+       pf.is_build_artifact(Path("a/b/c.pyc")), True)
+    eq(".pyo 后缀 → 跳过扫描", pf.is_build_artifact(Path("a/b/c.pyo")), True)
+    eq(".pyd 后缀 → 跳过扫描", pf.is_build_artifact(Path("a/b/c.pyd")), True)
+    eq("普通源码 → 必须照旧扫描",
+       pf.is_build_artifact(Path("scripts/selftest_guards.py")), False)
+    eq("路径里含 pycache 字样的普通文件 → 不得误跳过",
+       pf.is_build_artifact(Path("docs/pycache-notes.md")), False)
+
+    with tempfile.TemporaryDirectory() as td:
+        tdp = Path(td)
+        (tdp / "__pycache__").mkdir()
+        (tdp / "__pycache__" / "m.cpython-313.pyc").write_bytes(b"\x00passive income\x00")
+        eq("缓存里的禁用话术字节 → 不得判为违规",
+           pf.phrase_violations(tdp, ["passive income"]), [])
+        (tdp / "real.md").write_text("passive income", encoding="utf-8")
+        eq("真实内容文件仍须命中（证明没有把检查弄瞎）",
+           len(pf.phrase_violations(tdp, ["passive income"])), 1)
+
+        # 10.6 规则的自我定义（自检夹具）不得被自己的规则判违规
+        # 但只有"自检脚本"享此豁免——真实内容文件照旧全量扫描。
+        (tdp / "real.md").unlink()
+        (tdp / "selftest_guards.py").write_text('RULES = ["passive income"]', encoding="utf-8")
+        eq("自检夹具里的禁用话术 → 不得判为违规（它是规则的可执行定义）",
+           pf.phrase_violations(tdp, ["passive income"]), [])
+        (tdp / "content.md").write_text("we promise passive income", encoding="utf-8")
+        eq("非自检文件仍须命中（豁免范围不得扩大）",
+           len(pf.phrase_violations(tdp, ["passive income"])), 1)
+        eq("豁免判定：路径精确匹配自检脚本", pf.is_rule_definition(
+            Path("scripts/selftest_guards.py"), Path(".")), True)
+        eq("豁免判定：普通内容文件不豁免",
+           pf.is_rule_definition(Path("docs/faq.md"), Path(".")), False)
+        eq("豁免判定：名字含 selftest 的 py 也豁免",
+           pf.is_rule_definition(Path("ops/selftest_x.py"), Path(".")), True)
+
     # ---------------------------------------------------------------- 8. 合规扫描不得自伤
     # 2026-09-27 实测：preflight_repo.py 的"禁用话术"扫描会遍历**整棵树**，包括
     # ops/growth-operator/actn-growth-config.yaml —— 而那个文件里的 forbidden_phrases
@@ -255,8 +338,6 @@ def main() -> int:
     except ImportError:
         print("  SKIP  仓库预检工具不在当前部署集内（仅本地适用）")
     else:
-        import tempfile  # noqa: PLC0415
-
         RULES = ["guaranteed income", "passive income", "保证赚钱"]
         with tempfile.TemporaryDirectory() as td:
             tdp = Path(td)

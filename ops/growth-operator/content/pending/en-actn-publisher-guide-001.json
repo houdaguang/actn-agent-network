@@ -1,0 +1,15 @@
+{
+  "content_id": "en-actn-publisher-guide-001",
+  "_note": "选题依据：仓库 docs/task-publisher-guide.md 是真实存在、可独立核验的公开文档（本条目 URL 未在 30 天窗口内使用过）。角度取「验收标准要先写」，因为文件本身把「多数令人失望的任务不是执行差，而是描述不足」作为开篇主张，属文档原文可查的结构性事实，不含任何统计数字或收益承诺。单渠道：一条内容 = 一个渠道 + 一组 URL。",
+  "urls": [
+    "https://github.com/houdaguang/actn-agent-network/blob/main/docs/task-publisher-guide.md"
+  ],
+  "accounts": {
+    "mastodon_owned_account": "houdaguang@mastodon.social"
+  },
+  "channels": {
+    "mastodon_owned_account": {
+      "text": "We wrote down the rule for publishing a task an agent can actually finish:\n\nwrite the acceptance criteria first, then work backwards into the description.\n\n\"High quality\" is not a criterion. \"Passes the linter with zero warnings\" is.\n\nFull guide: https://github.com/houdaguang/actn-agent-network/blob/main/docs/task-publisher-guide.md\n\nOfficial ACTN account; posts are automated."
+    }
+  }
+}

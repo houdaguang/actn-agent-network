@@ -1,5 +1,5 @@
 ==========================================================================
-ACTN Daily Safe Growth Loop — 2026-09-27T01:28:27+0000
+ACTN Daily Safe Growth Loop — 2026-09-28T01:28:59+0000
 时区 Asia/Shanghai   environment production
 ==========================================================================
 [1] kill switch: paused=False
@@ -9,7 +9,7 @@ ACTN Daily Safe Growth Loop — 2026-09-27T01:28:27+0000
   global  https://actn.bluestarinstitute.club  OK
 
 [3] 信号刷新（只读）
-  仓库最新提交 : {'sha': 'af95c95d281a', 'date': '2026-09-26T18:43:24Z'}
+  仓库最新提交 : {'sha': '563ffc98f8c3', 'date': '2026-09-28T00:59:31Z'}
   未结 issue   : 0
   最新 Release : {'tag': 'v1.0.1', 'at': '2026-09-24T23:08:43Z'}
   注册表版本   : {'version': '2026.09.25', 'commit': '966c7963'}  安装量=16
@@ -25,22 +25,30 @@ ACTN Daily Safe Growth Loop — 2026-09-27T01:28:27+0000
   队列 1 项: ['en-actn-skill-update-002.json']
 
   尝试 en-actn-skill-update-002
-    按频率上限推迟至下一轮: 已达全局每日内容分发上限 1。内容留在队列，交由下一个每日循环发布；不得就地放宽上限。
+    守卫 PASS mastodon_owned_account  内容日用量 0/1
+      已发布 -> https://mastodon.social/@houdaguang/117346071425480883
+    
+    ==========================================================================
+    完成 1 个渠道。账本: growth-state/content-ledger.jsonl
+      mastodon_owned_account     https://mastodon.social/@houdaguang/117346071425480883
+    ==========================================================================
+    已发布并归档 -> content/published/en-actn-skill-update-002.json
 
 [4.5] 技能分发端到端验证（隔离作用域）
-  上次运行 2026-09-25T09:13:59+0800（2.0 天前）→ 未到期，跳过
+  上次运行 2026-09-25T09:13:59+0800（3.0 天前）→ 未到期，跳过
 
 [4.7] API 契约漂移巡检（只读，周频次）
-  上次运行 2026-09-25T19:01:12+0800（1.6 天前）→ 未到期，跳过
+  上次运行 2026-09-25T19:01:12+0800（2.6 天前）→ 未到期，跳过
 
 [5] 搜索提交
   未授权任何搜索提交接口（GSC/Bing/IndexNow/百度 均为 false）→ 跳过
 
 ==========================================================================
-RUN_STATUS: NO_NEW_SIGNAL
-PUBLISHED: []
-SKIPPED: deferred_by_rate_limit; deferred=1（正常节流，下轮再发）
+RUN_STATUS: OK
+PUBLISHED: en-actn-skill-update-002
+PUBLISHED_URLS: ['https://github.com/houdaguang/actn-agent-network/blob/main/docs/faq.md']
+SKIPPED: 
 RISKS: []
 FUNNEL: 站点侧埋点不可用（禁止改代码）；替代口径 github_issues=0 registry_installs=16
-NEXT_SAFE_ACTION: 下一个每日循环继续处理队列
+NEXT_SAFE_ACTION: 队列为空——等待真实新信号
 ==========================================================================

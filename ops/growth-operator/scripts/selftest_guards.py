@@ -13,6 +13,7 @@
 """
 from __future__ import annotations
 
+import json
 import sys
 import tempfile
 from datetime import datetime, timedelta, timezone
@@ -390,6 +391,104 @@ def main() -> int:
             (tdp / "post.md").write_text("保证赚钱，且 guaranteed income", encoding="utf-8")
             eq("纯文本命中多种话术 → 逐条报出",
                len(pf.phrase_violations(tdp, RULES)), 2)
+
+    # ---------------------------------------------------------------- 9. 公开资产监控不得静默失明
+    # 2026-09-29：china/sitemap.xml 首页 lastmod 推进（**等长变更**：哈希变、字节不变）
+    # 触发了仓库历史上第一条 asset_changed 告警。核对后确认生产 URL 集合未变
+    # （china 16 / global 22），我们自有文档引用的 ACTN URL 全部有效 —— 告警本身良性。
+    # 但顺着这条告警读代码，发现监控自身有两个"只会在特定时刻才显形"的缺陷：
+    #   A) 抓取失败会把 sha256=None 写回基线；基线被抹掉后，真实变更**永远**报不出来
+    #      （日志里只多一行"首次记录"，与"一切正常"外观相同）；
+    #   B) idle_days 每次运行都 +1，而云端一天可以跑多次（run-log 实测 2026-09-26 一天 5 次），
+    #      于是"连续 3 天为空"可能在**同一天内**就报出来。
+    # 两者都是"报告说的"与"实际发生的"不符 → 按硬故障处理。
+    print("\n[11] 公开资产监控：抓取失败不得清空基线；空置天数只认日历日")
+    try:
+        import asset_watch as aw  # noqa: PLC0415
+    except ImportError:
+        print("  SKIP  asset_watch 不在当前部署集内")
+    else:
+        saved = (aw.ROOT, aw.fetch, aw.append_jsonl, aw.CFG)
+        try:
+            with tempfile.TemporaryDirectory() as td:
+                tdp = Path(td)
+                (tdp / "content" / "pending").mkdir(parents=True)
+                (tdp / "growth-state").mkdir()
+                recorded: list[dict] = []
+                aw.ROOT = tdp
+                aw.append_jsonl = lambda rel, rec: recorded.append(rec)
+                aw.CFG = {"timezone": "Asia/Shanghai",
+                          "sites": {"china": {"origin": "https://china.invalid"},
+                                    "global": {"origin": "https://global.invalid"}}}
+
+                hashes = tdp / "growth-state" / "asset-hashes.json"
+                hashes.write_text(json.dumps({"china/sitemap.xml": {
+                    "status": 200, "bytes": 100, "sha256": "baseline00"}}),
+                    encoding="utf-8")
+
+                def fake_fetch(fail_sitemap: bool):
+                    def _f(url, retries=3):
+                        if (fail_sitemap and url.endswith("/sitemap.xml")
+                                and "china.invalid" in url):
+                            return 0, b"timeout"
+                        return 200, b"body:" + url.encode()
+                    return _f
+
+                # 11.1 抓取失败：必须保留基线（修复前会被写成 sha256=None）
+                aw.fetch = fake_fetch(True)
+                out1 = aw.watch()
+                kept = json.loads(hashes.read_text(encoding="utf-8"))
+                eq("抓取失败不得抹掉已有基线",
+                   kept["china/sitemap.xml"]["sha256"], "baseline00")
+                eq("抓取失败必须显式记入运行摘要（否则报告与事实不一致）",
+                   "china/sitemap.xml" in (out1.get("assets_degraded") or []), True)
+                eq("抓取失败不得被误报成公开资产变更",
+                   [a for a in recorded if a["kind"] == "asset_changed"], [])
+                eq("抓取失败不得计入变更数", out1["changes"], [])
+                eq("抓取失败项仍须计入跟踪总数（不得悄悄少一项）",
+                   out1["assets_tracked"], 10)
+
+                # 11.2 基线保住之后，真实变更仍必须被检出
+                #      （证明修的是"还能报警"，而不是把监控弄瞎）
+                aw.fetch = fake_fetch(False)
+                aw.watch()
+                eq("基线保留后，真实内容变更仍须告警",
+                   [a["title"] for a in recorded if a["kind"] == "asset_changed"],
+                   ["公开资产变更：china/sitemap.xml"])
+
+                # 11.3 同一天内多次运行不得把空置天数累加
+                hashes.unlink()
+                (tdp / "growth-state" / "queue-idle.json").unlink(missing_ok=True)
+                recorded.clear()
+                for _ in range(5):
+                    out3 = aw.watch()
+                eq("同一天内跑 5 次 → 空置仍应记为 1 天", out3["queue_idle_days"], 1)
+                eq("同一天内跑 5 次 → 不得触发「连续 N 天为空」告警",
+                   [a for a in recorded if a["kind"] == "queue_idle"], [])
+
+                # 11.4 真的跨了 3 天必须告警，且报出的天数要准
+                today = aw.local_date()
+                since = (datetime.strptime(today, "%Y-%m-%d")
+                         - timedelta(days=2)).strftime("%Y-%m-%d")
+                (tdp / "growth-state" / "queue-idle.json").write_text(
+                    json.dumps({"idle_days": 0, "empty_since_date": since,
+                                "last_nonempty_date": None}), encoding="utf-8")
+                out4 = aw.watch()
+                qa = [a for a in recorded if a["kind"] == "queue_idle"]
+                eq("空置满 3 天 → 必须告警一次", len(qa), 1)
+                eq("告警里报出的天数必须与实际一致", qa[0]["detail"]["idle_days"], 3)
+                eq("摘要里的空置天数必须与告警一致", out4["queue_idle_days"], 3)
+
+                # 11.5 队列恢复后必须归零，并记住上次非空的日子
+                (tdp / "content" / "pending" / "x.json").write_text("{}", encoding="utf-8")
+                out5 = aw.watch()
+                eq("队列恢复 → 空置归零", out5["queue_idle_days"], 0)
+                st5 = json.loads((tdp / "growth-state" / "queue-idle.json")
+                                 .read_text(encoding="utf-8"))
+                eq("队列恢复 → 记下今天的日期作为 last_nonempty_date",
+                   st5.get("last_nonempty_date"), today)
+        finally:
+            (aw.ROOT, aw.fetch, aw.append_jsonl, aw.CFG) = saved
 
     print("\n" + "=" * 74)
     if failures:

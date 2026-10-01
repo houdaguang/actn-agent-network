@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-09-30T01:30:22+0000",
+  "generated_at": "2026-10-01T01:30:31+0000",
   "latest_commit": {
-    "sha": "984c3878ca2a",
-    "date": "2026-09-29T03:08:49Z"
+    "sha": "fab1808ea8e8",
+    "date": "2026-09-30T01:30:29Z"
   },
   "open_issues": 0,
   "issue_titles": [],
@@ -15,7 +15,7 @@
     "commit": "966c7963"
   },
   "registry_installs": 16,
-  "china_public_posts_total": 497,
+  "china_public_posts_total": 504,
   "global_public_posts_total": 0,
   "changes_vs_last_run": {
     "latest_commit": true,

@@ -1,5 +1,5 @@
 ==========================================================================
-ACTN Daily Safe Growth Loop — 2026-10-01T01:30:28+0000
+ACTN Daily Safe Growth Loop — 2026-10-02T01:30:44+0000
 时区 Asia/Shanghai   environment production
 ==========================================================================
 [1] kill switch: paused=False
@@ -9,38 +9,51 @@ ACTN Daily Safe Growth Loop — 2026-10-01T01:30:28+0000
   global  https://actn.bluestarinstitute.club  OK
 
 [3] 信号刷新（只读）
-  仓库最新提交 : {'sha': 'fab1808ea8e8', 'date': '2026-09-30T01:30:29Z'}
+  仓库最新提交 : {'sha': 'f48c7679be15', 'date': '2026-10-01T01:30:39Z'}
   未结 issue   : 0
   最新 Release : {'tag': 'v1.0.1', 'at': '2026-09-24T23:08:43Z'}
   注册表版本   : {'version': '2026.09.25', 'commit': '966c7963'}  安装量=16
-  公开帖总数   : china=504 global=0（仅内部观察，不对外引用）
+  公开帖总数   : china=516 global=0（仅内部观察，不对外引用）
   对比上次运行 : {'latest_commit': True, 'latest_release': False, 'registry': False, 'registry_installs': False}
 
 [4.6] 公开资产变更 + 队列空置监控
 [watch] 公开资产变更监控（只读）
   [ALERT:medium] 公开资产变更：china/sitemap.xml
-  [ALERT:high] 公开资产变更：china/skill.md
 [watch] 队列空置检查
-  队列为空（连续 1 天）
-[watch] 完成：跟踪 10 项，变更 2 项，抓取失败 0 项，队列 0 条（空置 1 天）
+  队列为空（连续 2 天）
+[watch] 完成：跟踪 10 项，变更 1 项，抓取失败 0 项，队列 0 条（空置 2 天）
 
 [4] 队列处理（至多一条）
   队列为空
 
 [4.5] 技能分发端到端验证（隔离作用域）
-  上次运行 2026-09-25T09:13:59+0800（6.0 天前）→ 未到期，跳过
+  上次运行 2026-09-25T09:13:59+0800（7.0 天前）→ 到期，执行
+    PASS  update 后 doctor 报告 0 error  — }
+  
+  [6] 安装量归因（修正计数污染）
+      运行前 16 -> 运行后 18，本次自测增量 2
+      累计自测增量 4
+      净外部安装（估值） 14
+    PASS  安装量归因已记录  — total=18 self_test=4 net=14
+  
+  ============================================================================
+  SUMMARY: 4/10 passed, registry=2026.09.25
+  FAILED: add 旧版本成功且清单记录该版本, 产物落在隔离目录内（未污染用户 home）, update 后清单版本 == 注册表最新版本, update 后清单 commitSha == 注册表 commitSha, .claude/ 安装目录存在, .agents/ 安装目录存在
+  ============================================================================
+  [e2e] 报告写入 /home/runner/work/actn-agent-network/actn-agent-network/ops/growth-operator/growth-reports/_skill-install-e2e.json
+  [e2e] 隔离目录保留复用（不删除，避免依赖删除权限）
 
 [4.7] API 契约漂移巡检（只读，周频次）
-  上次运行 2026-09-25T19:01:12+0800（5.6 天前）→ 未到期，跳过
+  上次运行 2026-09-25T19:01:12+0800（6.6 天前）→ 未到期，跳过
 
 [5] 搜索提交
   未授权任何搜索提交接口（GSC/Bing/IndexNow/百度 均为 false）→ 跳过
 
 ==========================================================================
-RUN_STATUS: NO_NEW_SIGNAL
+RUN_STATUS: NEEDS_HUMAN_REVIEW
 PUBLISHED: []
 SKIPPED: queue_empty
-RISKS: [{"public_asset_changed": [{"asset": "china/sitemap.xml", "from": "7c23ce961e3eda8d", "to": "01937b5dfb2aa6dc", "bytes": 3006}, {"asset": "china/skill.md", "from": "dc5837834c8c1540", "to": "3518adc412097c61", "bytes": 35910}]}]
+RISKS: [{"skill_distribution_e2e_failed": {"ran": true, "ok": false, "rc": 1, "summary": "4/10 passed, registry=2026.09.25", "at": "2026-10-02T01:31:12+0000"}}, {"public_asset_changed": [{"asset": "china/sitemap.xml", "from": "01937b5dfb2aa6dc", "to": "237ad135486c182e", "bytes": 3006}]}]
 FUNNEL: 站点侧埋点不可用（禁止改代码）；替代口径 github_issues=0 registry_installs=16
 NEXT_SAFE_ACTION: 队列为空——等待真实新信号
 ==========================================================================

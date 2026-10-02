@@ -1,0 +1,135 @@
+{
+  "generated_at": "2026-10-02T01:31:12+0000",
+  "scratch": "/home/runner/work/actn-agent-network/actn-agent-network/ops/growth-operator/.tmp-skhub-verify",
+  "isolated_from_user_home": true,
+  "registry": {
+    "version": "2026.09.25",
+    "commitSha": "966c79639900bf3c75074fac3785aac0270054c0",
+    "files": {
+      "references/API.md": {
+        "size": 10570,
+        "gitBlobSha": "86115e9b51d50f1f637c932ecde636c465917ecf"
+      },
+      "scripts/check_connection.py": {
+        "size": 5337,
+        "gitBlobSha": "da166373efd502198977b7f64476838cef8b1e3c"
+      },
+      "scripts/check-connection.mjs": {
+        "size": 4953,
+        "gitBlobSha": "319f98ba8fb8628dcb600eeb6eebb97d741a71dd"
+      },
+      "SKILL.md": {
+        "size": 13959,
+        "gitBlobSha": "33c09e1681a5e8171436e32b0bc74a7cad46bdf8"
+      }
+    }
+  },
+  "old_version_tested": "2026.09.24",
+  "results": [
+    {
+      "check": "add 旧版本成功且清单记录该版本",
+      "pass": false,
+      "detail": "manifest version=None"
+    },
+    {
+      "check": "产物落在隔离目录内（未污染用户 home）",
+      "pass": false,
+      "detail": ""
+    },
+    {
+      "check": "doctor 可非交互运行",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "check": "已证实：doctor 在过期状态下不报错（它不检查上游新版本）",
+      "pass": true,
+      "detail": "这是文档里必须写明的一点"
+    },
+    {
+      "check": "update 后清单版本 == 注册表最新版本",
+      "pass": false,
+      "detail": "None vs 2026.09.25"
+    },
+    {
+      "check": "update 后清单 commitSha == 注册表 commitSha",
+      "pass": false,
+      "detail": " vs 966c79639900"
+    },
+    {
+      "check": ".claude/ 安装目录存在",
+      "pass": false,
+      "detail": "/home/runner/work/actn-agent-network/actn-agent-network/ops/growth-operator/.tmp-skhub-verify/.claude/skills/actn-network"
+    },
+    {
+      "check": ".agents/ 安装目录存在",
+      "pass": false,
+      "detail": "/home/runner/work/actn-agent-network/actn-agent-network/ops/growth-operator/.tmp-skhub-verify/.agents/skills/actn-network"
+    },
+    {
+      "check": "update 后 doctor 报告 0 error",
+      "pass": true,
+      "detail": "}"
+    },
+    {
+      "check": "安装量归因已记录",
+      "pass": true,
+      "detail": "total=18 self_test=4 net=14"
+    }
+  ],
+  "steps": [
+    {
+      "step": "add@old",
+      "rc": 0,
+      "tail": [
+        "[start] Fetching skill \"houdaguang/actn-network\"@2026.09.24...",
+        "[start] Installing actn-network v2026.09.24...",
+        "[info] Placed .claude/skills/actn-network using a copy.",
+        "[success] Installed \"actn-network\" (houdaguang/actn-network v2026.09.24)"
+      ]
+    },
+    {
+      "step": "doctor@stale",
+      "rc": 0,
+      "tail": [
+        "{",
+        "  \"findings\": [],",
+        "  \"fixed\": [],",
+        "  \"warnings\": []",
+        "}"
+      ]
+    },
+    {
+      "step": "update",
+      "rc": 0,
+      "tail": [
+        "[start] Checking for updates...",
+        "[start] Updating \"houdaguang/actn-network\" to v2026.09.25...",
+        "[info] Placed .claude/skills/actn-network using a copy.",
+        "[success] Updated \"actn-network\" (houdaguang/actn-network v2026.09.24 → v2026.09.25)",
+        "[success] Updated 1 skill(s)."
+      ]
+    },
+    {
+      "step": "doctor@latest",
+      "rc": 0,
+      "tail": [
+        "{",
+        "  \"findings\": [],",
+        "  \"fixed\": [],",
+        "  \"warnings\": []",
+        "}"
+      ]
+    }
+  ],
+  "passed": 4,
+  "total": 10,
+  "install_attribution": {
+    "installs_before": 16,
+    "installs_after": 18,
+    "self_test_delta": 2,
+    "self_test_delta_sum": 4,
+    "net_external_estimate": 14
+  },
+  "side_effect_on_registry_counter": "本验证会真实安装该公开技能，因此会推高注册表的 totalInstalls。增量已记录在 growth-state/install-attribution.json，周报据此给出净外部安装估值。"
+}

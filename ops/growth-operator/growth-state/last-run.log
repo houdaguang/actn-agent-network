@@ -1,5 +1,5 @@
 ==========================================================================
-ACTN Daily Safe Growth Loop — 2026-10-04T04:01:23+0000
+ACTN Daily Safe Growth Loop — 2026-10-05T01:31:23+0000
 时区 Asia/Shanghai   environment production
 ==========================================================================
 [1] kill switch: paused=False
@@ -9,29 +9,29 @@ ACTN Daily Safe Growth Loop — 2026-10-04T04:01:23+0000
   global  https://actn.bluestarinstitute.club  OK
 
 [3] 信号刷新（只读）
-  仓库最新提交 : {'sha': '6bdc77d4265e', 'date': '2026-10-03T16:49:55Z'}
+  仓库最新提交 : {'sha': '8f3d77ae7d02', 'date': '2026-10-05T01:03:21Z'}
   未结 issue   : 0
   最新 Release : {'tag': 'v1.0.1', 'at': '2026-09-24T23:08:43Z'}
   注册表版本   : {'version': '2026.09.25', 'commit': '966c7963'}  安装量=18
-  公开帖总数   : china=530 global=2（仅内部观察，不对外引用）
+  公开帖总数   : china=531 global=2（仅内部观察，不对外引用）
   对比上次运行 : {'latest_commit': True, 'latest_release': False, 'registry': False, 'registry_installs': False}
 
 [4.6] 公开资产变更 + 队列空置监控
 [watch] 公开资产变更监控（只读）
-  [ALERT:high] 公开资产变更：global/skill.md
+  [ALERT:medium] 公开资产变更：china/sitemap.xml
 [watch] 队列空置检查
-  队列为空（连续 4 天）
-  [ALERT:medium] 内容队列连续 4 天为空
-[watch] 完成：跟踪 10 项，变更 1 项，抓取失败 0 项，队列 0 条（空置 4 天）
+  队列为空（连续 5 天）
+  [ALERT:medium] 内容队列连续 5 天为空
+[watch] 完成：跟踪 10 项，变更 1 项，抓取失败 0 项，队列 0 条（空置 5 天）
 
 [4] 队列处理（至多一条）
   队列为空
 
 [4.5] 技能分发端到端验证（隔离作用域）
-  上次运行 2026-10-02T01:31:12+0000（2.1 天前）→ 未到期，跳过
+  上次运行 2026-10-02T01:31:12+0000（3.0 天前）→ 未到期，跳过
 
 [4.7] API 契约漂移巡检（只读，周频次）
-  上次运行 2026-10-03T01:30:04+0000（1.1 天前）→ 未到期，跳过
+  上次运行 2026-10-03T01:30:04+0000（2.0 天前）→ 未到期，跳过
 
 [5] 搜索提交
   未授权任何搜索提交接口（GSC/Bing/IndexNow/百度 均为 false）→ 跳过
@@ -40,7 +40,7 @@ ACTN Daily Safe Growth Loop — 2026-10-04T04:01:23+0000
 RUN_STATUS: NO_NEW_SIGNAL
 PUBLISHED: []
 SKIPPED: queue_empty
-RISKS: [{"public_asset_changed": [{"asset": "global/skill.md", "from": "f588488c9bd7d509", "to": "b5aa4786e979ed6f", "bytes": 38781}]}, {"content_queue_idle_days": 4}]
+RISKS: [{"public_asset_changed": [{"asset": "china/sitemap.xml", "from": "237ad135486c182e", "to": "f58302d877a51cb3", "bytes": 3006}]}, {"content_queue_idle_days": 5}]
 FUNNEL: 站点侧埋点不可用（禁止改代码）；替代口径 github_issues=0 registry_installs=18
 NEXT_SAFE_ACTION: 队列为空——等待真实新信号
 ==========================================================================

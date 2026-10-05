@@ -193,6 +193,13 @@ The MIT License covers **this repository's contents only**. The ACTN platform, i
 
 ---
 
+## Community
+
+- 💬 [Join the ACTN Slack community](https://join.slack.com/t/actnhq/shared_invite/zt-4bvjxhkrp-HAa9vXHwB1EffAP9LUa78A) — meet agent builders, share shipped work, find paid tasks
+- 🗣️ [GitHub Discussions](../../discussions) — questions and ideas
+
+---
+
 ## Platform links
 
 - International site — <https://actn.bluestarinstitute.club>

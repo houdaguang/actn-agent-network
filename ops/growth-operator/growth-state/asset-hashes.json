@@ -17,12 +17,12 @@
   "china/sitemap.xml": {
     "status": 200,
     "bytes": 3006,
-    "sha256": "f58302d877a51cb3"
+    "sha256": "daccba89de3eadca"
   },
   "china/skill.md": {
     "status": 200,
-    "bytes": 35910,
-    "sha256": "3518adc412097c61"
+    "bytes": 40125,
+    "sha256": "781e494ef9654411"
   },
   "global/feed.xml": {
     "status": 200,

@@ -1,5 +1,5 @@
 ==========================================================================
-ACTN Daily Safe Growth Loop — 2026-10-07T01:32:03+0000
+ACTN Daily Safe Growth Loop — 2026-10-08T01:32:45+0000
 时区 Asia/Shanghai   environment production
 ==========================================================================
 [1] kill switch: paused=False
@@ -9,29 +9,30 @@ ACTN Daily Safe Growth Loop — 2026-10-07T01:32:03+0000
   global  https://actn.bluestarinstitute.club  OK
 
 [3] 信号刷新（只读）
-  仓库最新提交 : {'sha': '8c2335a691ce', 'date': '2026-10-06T01:31:03Z'}
+  仓库最新提交 : {'sha': 'a19f88094451', 'date': '2026-10-07T01:32:14Z'}
   未结 issue   : 0
   最新 Release : {'tag': 'v1.0.1', 'at': '2026-09-24T23:08:43Z'}
   注册表版本   : {'version': '2026.09.25', 'commit': '966c7963'}  安装量=18
-  公开帖总数   : china=541 global=2（仅内部观察，不对外引用）
+  公开帖总数   : china=547 global=2（仅内部观察，不对外引用）
   对比上次运行 : {'latest_commit': True, 'latest_release': False, 'registry': False, 'registry_installs': False}
 
 [4.6] 公开资产变更 + 队列空置监控
 [watch] 公开资产变更监控（只读）
   [ALERT:medium] 公开资产变更：china/sitemap.xml
+  [ALERT:high] 公开资产变更：china/skill.md
 [watch] 队列空置检查
-  队列为空（连续 7 天）
-  [ALERT:medium] 内容队列连续 7 天为空
-[watch] 完成：跟踪 10 项，变更 1 项，抓取失败 0 项，队列 0 条（空置 7 天）
+  队列为空（连续 8 天）
+  [ALERT:medium] 内容队列连续 8 天为空
+[watch] 完成：跟踪 10 项，变更 2 项，抓取失败 0 项，队列 0 条（空置 8 天）
 
 [4] 队列处理（至多一条）
   队列为空
 
 [4.5] 技能分发端到端验证（隔离作用域）
-  上次运行 2026-10-02T01:31:12+0000（5.0 天前）→ 未到期，跳过
+  上次运行 2026-10-02T01:31:12+0000（6.0 天前）→ 未到期，跳过
 
 [4.7] API 契约漂移巡检（只读，周频次）
-  上次运行 2026-10-03T01:30:04+0000（4.0 天前）→ 未到期，跳过
+  上次运行 2026-10-03T01:30:04+0000（5.0 天前）→ 未到期，跳过
 
 [5] 搜索提交
   未授权任何搜索提交接口（GSC/Bing/IndexNow/百度 均为 false）→ 跳过
@@ -40,7 +41,7 @@ ACTN Daily Safe Growth Loop — 2026-10-07T01:32:03+0000
 RUN_STATUS: NO_NEW_SIGNAL
 PUBLISHED: []
 SKIPPED: queue_empty
-RISKS: [{"public_asset_changed": [{"asset": "china/sitemap.xml", "from": "daccba89de3eadca", "to": "074e62dec9be4329", "bytes": 3006}]}, {"content_queue_idle_days": 7}]
+RISKS: [{"public_asset_changed": [{"asset": "china/sitemap.xml", "from": "074e62dec9be4329", "to": "1c4fcf0e3bc9dc60", "bytes": 3006}, {"asset": "china/skill.md", "from": "781e494ef9654411", "to": "ed8a638afbec8f78", "bytes": 51268}]}, {"content_queue_idle_days": 8}]
 FUNNEL: 站点侧埋点不可用（禁止改代码）；替代口径 github_issues=0 registry_installs=18
 NEXT_SAFE_ACTION: 队列为空——等待真实新信号
 ==========================================================================

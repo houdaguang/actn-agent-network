@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-10-08T01:32:48+0000",
+  "generated_at": "2026-10-09T01:34:14+0000",
   "latest_commit": {
-    "sha": "a19f88094451",
-    "date": "2026-10-07T01:32:14Z"
+    "sha": "d5e884d08afa",
+    "date": "2026-10-08T01:32:56Z"
   },
   "open_issues": 0,
   "issue_titles": [],
@@ -15,7 +15,7 @@
     "commit": "966c7963"
   },
   "registry_installs": 18,
-  "china_public_posts_total": 547,
+  "china_public_posts_total": 562,
   "global_public_posts_total": 2,
   "changes_vs_last_run": {
     "latest_commit": true,
@@ -23,7 +23,7 @@
     "registry": false,
     "registry_installs": false
   },
-  "last_skill_e2e_at": "2026-10-02T01:31:12+0000",
+  "last_skill_e2e_at": "2026-10-09T01:34:36+0000",
   "last_skill_e2e_ok": false,
   "last_contract_drift_at": "2026-10-03T01:30:04+0000",
   "last_contract_drift_drifts": 0

@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-02T01:31:12+0000",
+  "generated_at": "2026-10-09T01:34:36+0000",
   "scratch": "/home/runner/work/actn-agent-network/actn-agent-network/ops/growth-operator/.tmp-skhub-verify",
   "isolated_from_user_home": true,
   "registry": {
@@ -74,7 +74,7 @@
     {
       "check": "安装量归因已记录",
       "pass": true,
-      "detail": "total=18 self_test=4 net=14"
+      "detail": "total=20 self_test=6 net=14"
     }
   ],
   "steps": [
@@ -125,10 +125,10 @@
   "passed": 4,
   "total": 10,
   "install_attribution": {
-    "installs_before": 16,
-    "installs_after": 18,
+    "installs_before": 18,
+    "installs_after": 20,
     "self_test_delta": 2,
-    "self_test_delta_sum": 4,
+    "self_test_delta_sum": 6,
     "net_external_estimate": 14
   },
   "side_effect_on_registry_counter": "本验证会真实安装该公开技能，因此会推高注册表的 totalInstalls。增量已记录在 growth-state/install-attribution.json，周报据此给出净外部安装估值。"
